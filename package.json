@@ -1,0 +1,16 @@
+{
+  "name": "solar-system-harp",
+  "version": "1.0.0",
+  "description": "",
+  "license": "ISC",
+  "author": "fonserbc",
+  "type": "commonjs",
+  "main": "main.js",
+  "scripts": {
+    "serve": "npx vite"
+  },
+  "dependencies": {
+    "three": "^0.177.0",
+    "tone": "^15.1.22"
+  }
+}
