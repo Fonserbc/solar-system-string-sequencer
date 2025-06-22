@@ -27,10 +27,13 @@ export default class planet
         this.color = color;
         this.computedPosition = new Vector3();
 
-        this.geometry = new SphereGeometry(radius / AU, 32);
+        this.geometry = new SphereGeometry(1, 32);
 
         this.material = new MeshBasicMaterial( { color: color } );
         this.mesh = new Mesh( this.geometry, this.material );
+
+        let size = radius / AU;
+        this.mesh.scale.set(size,size,size);
         console.log(this);
         scene.add(this.mesh);
     }
