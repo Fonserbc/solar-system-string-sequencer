@@ -38,20 +38,21 @@ export default class planet
         scene.add(this.mesh);
     }
 
+    // Expected keplerian elements from: https://ssd.jpl.nasa.gov/planets/approx_pos.html
     setKeplerianElements(a0, a, e0, e, I0, I, L0, L, lp0, lp, o0, o)
     {
-        this.a0 = a0;
-        this._a = a;
-        this.e0 = e0;
-        this._e = e;
-        this.I0 = I0;
-        this._I = I;
-        this.L0 = L0;
-        this._L = L;
-        this.lp0 = lp0;
-        this._lp = lp;
-        this.o0 = o0;
-        this._o = o;
+        this.semiMajorAxis = a0;            // AU
+        this._a = a;                        // AU/century
+        this.eccentricity = e0;
+        this._e = e;                        // change per century
+        this.inclination = I0;              // degrees
+        this._I = I;                        // degrees/century
+        this.meanLongitude = L0;            // degrees
+        this._L = L;                        // degrees/century
+        this.longitudeOfPerihelion = lp0;   // degrees
+        this._lp = lp;                      // degrees/century
+        this.longitudeOfAscendingNode = o0; // degrees
+        this._o = o;                        // degrees/century
     }
 
     setAdditionalTerms(b, c, s, f) {
@@ -65,20 +66,24 @@ export default class planet
         return this.b !== undefined;
     }
 
-    computeCoordinates(Teph)
+    computeCoordinates(time)
     {
-        let T = (Teph - 2451545.0)/36525;
+        // Keplerian elements taken from NASA's https://ssd.jpl.nasa.gov/planets/approx_pos.html
+        // time is expected in days since J2000.00
+        let T = time/36525;
 
         // 1: compute current values of the 6 elements
-        let a = this.a0 + this._a * T;
-        let e = this.e0 + this._e * T;
-        let I = this.I0 + this._I * T;
-        let L = this.L0 + this._L * T;
-        let lp = this.lp0 + this._lp * T;
-        let o = this.o0 + this._o * T;
+        // for our 2d simplification, I will only care about the changing mean longitude
+        // Every other element will remain constant through time for our simplification
+        let a = this.semiMajorAxis;// + this._a * T;
+        let e = this.eccentricity;// + this._e * T;
+        let I = this.inclination;// + this._I * T;
+        let L = this.meanLongitude + this._L * T;
+        let lp = this.longitudeOfPerihelion;// + this._lp * T;
+        let o = this.longitudeOfAscendingNode;// + this._o * T;
 
         // 2: compute perihelion w, and mean anomaly M
-        let w = lp - o;
+        let w = lp - o; // constant in our simplification
         let M = L - lp;
         if (this.hasAdditionalTerms()) {
             M += this.b * T * T + this.c * cos(this.f * T) + this.s * sin(this.f * T);
@@ -90,10 +95,6 @@ export default class planet
 
         //console.log('M %s, e %s, i %s, o %s, w %s', M, e, I, o, w);
 
-        // 3: Mod M: -180 < M < 180, and calculate eccentric anomaly E
-        // M += 180.0;
-        // M = M % 360.0;
-        // M -= 180.0;
         let E = solveEccentricAnomaly(e, M);
         
         E %= CIRCLE;
