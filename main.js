@@ -2,9 +2,57 @@ import * as THREE from 'three/webgpu';
 import planet from './planet';
 import { AU } from './constants';
 import { lerp } from 'three/src/math/MathUtils';
+import * as dat from 'dat.gui';
 
+// Solar system harp
+// Stelar harp
+// Stellar system harp
+// Star system harp
+
+let config = {
+    daysPerSecond: 365/10,
+    unifiedScaleFactor: 0.15,
+    realisticScaleFactor: 0.94,
+    unifiedScale: 8,
+    realisticScale: 55,
+    camera: {
+        y: 6,
+        fov: 75, 
+    },
+    sun: {
+        intensity:12,
+    },
+    bg: {
+        color: "#000000",
+    },
+    ux: {
+        planetSize: 0.05,
+        sunSize: 0.1,
+        usabilityFactor: 0,
+    }
+}
+
+
+const gui = new dat.GUI({name: 'settings'});
 const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.001, 1000 );
+const camera = new THREE.PerspectiveCamera( config.camera.fov, window.innerWidth / window.innerHeight, 0.001, 1000 );
+
+gui.add(config, "daysPerSecond", 1, 365*4);
+let cameraGUI = gui.addFolder("Camera");
+cameraGUI.add(config.camera, "y", 0, 100);
+cameraGUI.add(config.camera, "fov", 5, 110);
+let sunGUI = gui.addFolder("Sun");
+sunGUI.add(config.sun, "intensity", 0, 20);
+let scaleGUI = gui.addFolder("Scale")
+scaleGUI.add(config, "realisticScaleFactor", 0, 1);
+scaleGUI.add(config, "unifiedScaleFactor", 0, 1);
+scaleGUI.add(config, "unifiedScale", 1, 65);
+scaleGUI.add(config, "realisticScale", 1, 65);
+let uxGUI = gui.addFolder("UX");
+uxGUI.add(config.ux, "planetSize", 0.01, 0.2);
+uxGUI.add(config.ux, "sunSize", 0.01, 0.2);
+uxGUI.add(config.ux, "usabilityFactor", 0, 1);
+uxGUI.open();
 
 const renderer = new THREE.WebGPURenderer();
 renderer.setSize( window.innerWidth, window.innerHeight );
@@ -12,14 +60,18 @@ document.body.appendChild( renderer.domElement );
 
 const sun = new THREE.Mesh( new THREE.SphereGeometry( 1, 32), new THREE.MeshBasicMaterial( { color: 0xffffdd } ));
 const sunRadius = 696340;
+const sunLight = new THREE.PointLight(0xfffffe, config.sun.intensity, 0, 0);
+sun.add(sunLight);
 scene.add( sun );
-scene.background = new THREE.Color(0x000000);
+scene.background = new THREE.Color(config.bg.color);
+var bgColor = gui.addColor(config.bg, "color");
+bgColor.onChange((v) => {
+    scene.background.set(v);
+})
 
-// const debug = new THREE.Mesh( new THREE.SphereGeometry( 0.1/*696340 / AU*/, 32), new THREE.MeshBasicMaterial( { color: 0x00ff44 } ));
-// scene.add( debug );
 
-camera.position.z = 6;
-camera.position.y = 1;
+camera.position.z = 0;
+camera.position.y = config.camera.y;
 camera.lookAt(sun.position);
 
 let planets = [];
@@ -56,33 +108,35 @@ let neptune = new planet("neptune", 24622, 0x366896, scene);
 neptune.setKeplerianElements(30.06952752, 0.00006447, 0.00895439, 0.00000818, 1.7700552, 0.000224, 304.2228929, 218.4651531, 46.68158724, 0.01009938, 131.7863585, -0.00606302);
 planets.push(neptune);
 
+const furthestPlanetDistance = 24622 / AU; // Neptune
+
 
 let timeMS = Date.now();
-let timeScale = 365/10; // 1 year every 10 seconds
 let accTimeDays = 0;
 
 function animate() {
     let currentTimeMS = Date.now();
     let deltaTime = currentTimeMS - timeMS;
     timeMS = currentTimeMS;
-    accTimeDays += deltaTime/1000 * timeScale;
+    accTimeDays += deltaTime/1000 * config.daysPerSecond;
 
-    let unifiedScale = 50;
-    let realisticScale = 50;
-    let unifiedScaleFactor = 0.01;//(Math.sin(time / 360 / 3) + 1)/2;
-    let realisticScaleFactor = 0.9;
+    camera.position.y = config.camera.y;
+    camera.fov = config.camera.fov;
+    camera.updateProjectionMatrix();
 
-    let sunSize = lerp(sunRadius / AU, unifiedScale, unifiedScaleFactor);
-    let directSunScaledSize = realisticScale * sunRadius / AU;
-    sunSize = lerp(sunSize, directSunScaledSize, realisticScaleFactor);
+    sunLight.intensity = config.sun.intensity;
+
+    let sunSize = lerp(sunRadius / AU, config.unifiedScale, config.unifiedScaleFactor);
+    let directSunScaledSize = config.realisticScale * sunRadius / AU;
+    sunSize = lerp(sunSize, directSunScaledSize, config.realisticScaleFactor);
     sun.scale.set(sunSize,sunSize,sunSize);
 
     planets.forEach((p) => {
         p.computeCoordinates(accTimeDays);
         p.update();
-        let size = lerp(p.radius / AU, unifiedScale, unifiedScaleFactor);
-        let directScaledSize = realisticScale * p.radius / AU;
-        size = lerp(size, directScaledSize, realisticScaleFactor);
+        let size = lerp(p.radius / AU, config.unifiedScale, config.unifiedScaleFactor);
+        let directScaledSize = config.realisticScale * p.radius / AU;
+        size = lerp(size, directScaledSize, config.realisticScaleFactor);
         p.mesh.scale.set(size,size,size);
     });
     renderer.render( scene, camera );

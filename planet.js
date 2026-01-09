@@ -1,5 +1,5 @@
 import { MathUtils } from "three";
-import { Mesh, MeshBasicMaterial, Sphere, SphereGeometry, Vector3 } from "three/webgpu";
+import { Mesh, MeshBasicMaterial, MeshLambertMaterial, MeshPhongMaterial, Sphere, SphereGeometry, Vector3 } from "three/webgpu";
 import { AU } from "./constants";
 
 function sin (d) {
@@ -29,7 +29,7 @@ export default class planet
 
         this.geometry = new SphereGeometry(1, 32);
 
-        this.material = new MeshBasicMaterial( { color: color } );
+        this.material = new MeshPhongMaterial( { color: color, emissive: color, emissiveIntensity: 0.03 } );
         this.mesh = new Mesh( this.geometry, this.material );
 
         let size = radius / AU;
