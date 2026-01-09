@@ -3,6 +3,7 @@ import planet from './planet';
 import { AU } from './constants';
 import { lerp } from 'three/src/math/MathUtils';
 import * as dat from 'dat.gui';
+import * as Tone from 'tone';
 
 // Solar system harp
 // Stelar harp
@@ -29,8 +30,22 @@ let config = {
         planetSize: 0.05,
         sunSize: 0.1,
         usabilityFactor: 0,
+    },
+    synth: {
+        attack: 0.12,
+        decay: 0.4,
+        sustain: 0.4,
+        release: 1.6,
     }
 }
+
+let audioReady = false;
+document.addEventListener("click", async () => {
+    if (!audioReady) {
+        await Tone.start();
+        audioReady = true;
+    }
+});
 
 
 const gui = new dat.GUI({name: 'settings'});
@@ -53,6 +68,11 @@ uxGUI.add(config.ux, "planetSize", 0.01, 0.2);
 uxGUI.add(config.ux, "sunSize", 0.01, 0.2);
 uxGUI.add(config.ux, "usabilityFactor", 0, 1);
 uxGUI.open();
+let synthGUI = gui.addFolder("Synth");
+synthGUI.add(config.synth, "attack", 0, 2);
+synthGUI.add(config.synth, "decay", 0, 2);
+synthGUI.add(config.synth, "sustain", 0, 1);
+synthGUI.add(config.synth, "release", 0, 2);
 
 const renderer = new THREE.WebGPURenderer();
 renderer.setSize( window.innerWidth, window.innerHeight );
@@ -108,12 +128,42 @@ let neptune = new planet("neptune", 24622, 0x366896, scene);
 neptune.setKeplerianElements(30.06952752, 0.00006447, 0.00895439, 0.00000818, 1.7700552, 0.000224, 304.2228929, 218.4651531, 46.68158724, 0.01009938, 131.7863585, -0.00606302);
 planets.push(neptune);
 
-const furthestPlanetDistance = 24622 / AU; // Neptune
+const furthestPlanetDistance = 30.06952752; // Neptune, in AU
 
 
 let timeMS = Date.now();
 let accTimeDays = 0;
 
+const synth = new Tone.MonoSynth({
+    oscillator: {
+        type: "square"
+    },
+    envelope: {
+        attack: config.synth.attack,
+        decay: config.synth.decay,
+        sustain: config.synth.sustain,
+        release: config.synth.release
+    },
+}).toDestination();
+// const synth2 = new Tone.FatOscillator("Ab3", "sawtooth", 40).toDestination();
+// const synth = new Tone.MembraneSynth().toDestination();
+// const synth2 = new Tone.Synth({
+//     oscillator: {
+//         type: "pwm",
+//         modulationFrequency: 0.25
+//     },
+//     envelope: {
+//         attackCurve: "sine",
+//         attack: 0.03,
+//         decay: 0.22,
+//         sustain: 0.4,
+//         release: 0.8,
+//     }
+// }).toDestination();
+const now = Tone.now();
+
+let synthCountdown = 0;
+let synthCounter = 0;
 function animate() {
     let currentTimeMS = Date.now();
     let deltaTime = currentTimeMS - timeMS;
@@ -140,6 +190,27 @@ function animate() {
         p.mesh.scale.set(size,size,size);
     });
     renderer.render( scene, camera );
+
+    if (audioReady) {
+        synthCountdown -= deltaTime;
+
+        if (synthCountdown <= 0)
+        {
+            synthCounter++;
+            // if (synthCounter % 2 == 0) {
+            //     synth2.triggerAttackRelease("C2", "8n");
+            // }
+            // else {
+                synth.envelope.attack = config.synth.attack;
+                synth.envelope.decay = config.synth.decay;
+                synth.envelope.sustain = config.synth.sustain;
+                synth.envelope.release = config.synth.release;
+                synth.triggerAttackRelease("C2", "8n");
+            // }
+            synthCountdown += 2000;
+            if (synthCountdown < 0) synthCountdown = 2000;
+        }
+    }
 }
 renderer.setAnimationLoop( animate );
 
