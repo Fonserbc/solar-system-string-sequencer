@@ -4,14 +4,17 @@ import { AU } from './constants';
 import { lerp } from 'three/src/math/MathUtils';
 import * as dat from 'dat.gui';
 import * as Tone from 'tone';
+import stellarString from './stellarString';
 
 // Solar system harp
 // Stelar harp
 // Stellar system harp
 // Star system harp
 
+// Solar System Strings S^3
+
 let config = {
-    daysPerSecond: 365/10,
+    daysPerSecond: 29,
     unifiedScaleFactor: 0.15,
     realisticScaleFactor: 0.94,
     unifiedScale: 8,
@@ -36,6 +39,13 @@ let config = {
         decay: 0.4,
         sustain: 0.4,
         release: 1.6,
+        volume: 1,
+    },
+    pluck: {
+        attackNoise: 0.2,
+        dampening: 1111,
+        resonance: 0.975,
+        release: 6.4
     }
 }
 
@@ -52,7 +62,7 @@ const gui = new dat.GUI({name: 'settings'});
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera( config.camera.fov, window.innerWidth / window.innerHeight, 0.001, 1000 );
 
-gui.add(config, "daysPerSecond", 1, 365*4);
+gui.add(config, "daysPerSecond", 1, 365);
 let cameraGUI = gui.addFolder("Camera");
 cameraGUI.add(config.camera, "y", 0, 100);
 cameraGUI.add(config.camera, "fov", 5, 110);
@@ -73,6 +83,13 @@ synthGUI.add(config.synth, "attack", 0, 2);
 synthGUI.add(config.synth, "decay", 0, 2);
 synthGUI.add(config.synth, "sustain", 0, 1);
 synthGUI.add(config.synth, "release", 0, 2);
+synthGUI.add(config.synth, "volume", 0, 1);
+let pluckGUI = gui.addFolder("Pluck");
+pluckGUI.add(config.pluck, "attackNoise", 0.1, 1.5, 0.05);
+pluckGUI.add(config.pluck, "dampening", 0, 7000);
+pluckGUI.add(config.pluck, "resonance", 0, 1);
+pluckGUI.add(config.pluck, "release", 0.01, 10);
+pluckGUI.open();
 
 const renderer = new THREE.WebGPURenderer();
 renderer.setSize( window.innerWidth, window.innerHeight );
@@ -132,42 +149,41 @@ const furthestPlanetDistance = 30.06952752; // Neptune, in AU
 
 
 let timeMS = Date.now();
+let accTimeMS = 0;
 let accTimeDays = 0;
 
-const synth = new Tone.MonoSynth({
-    oscillator: {
-        type: "square"
-    },
-    envelope: {
-        attack: config.synth.attack,
-        decay: config.synth.decay,
-        sustain: config.synth.sustain,
-        release: config.synth.release
-    },
-}).toDestination();
-// const synth2 = new Tone.FatOscillator("Ab3", "sawtooth", 40).toDestination();
-// const synth = new Tone.MembraneSynth().toDestination();
-// const synth2 = new Tone.Synth({
+// const synth = new Tone.MonoSynth({
 //     oscillator: {
-//         type: "pwm",
-//         modulationFrequency: 0.25
+//         type: "sawtooth"
 //     },
 //     envelope: {
-//         attackCurve: "sine",
-//         attack: 0.03,
-//         decay: 0.22,
-//         sustain: 0.4,
-//         release: 0.8,
-//     }
+//         attack: config.synth.attack,
+//         decay: config.synth.decay,
+//         sustain: config.synth.sustain,
+//         release: config.synth.release
+//     },
+//     volume: config.synth.volume
 // }).toDestination();
-const now = Tone.now();
+// const synth2 = new Tone.PluckSynth(config.pluck).toDestination();
 
-let synthCountdown = 0;
-let synthCounter = 0;
+// let synthCountdown = 0;
+// let synthCounter = 0;
+
+var strings = [];
+
+for (let i = 1; i < planets.length; ++i)
+{
+    let cares = [];
+    for (let j = i-1; j >= 0; --j) cares.push(planets[j]);
+    let string = new stellarString(config, scene, sun, planets[i].mesh, planets[i].color, cares);
+    strings.push(string);
+}
+
 function animate() {
     let currentTimeMS = Date.now();
     let deltaTime = currentTimeMS - timeMS;
     timeMS = currentTimeMS;
+    accTimeMS += deltaTime;
     accTimeDays += deltaTime/1000 * config.daysPerSecond;
 
     camera.position.y = config.camera.y;
@@ -189,29 +205,43 @@ function animate() {
         size = lerp(size, directScaledSize, config.realisticScaleFactor);
         p.mesh.scale.set(size,size,size);
     });
+
+    strings.forEach((s) => {
+        s.update(audioReady, accTimeMS, deltaTime);
+    });    
+
     renderer.render( scene, camera );
 
     if (audioReady) {
-        synthCountdown -= deltaTime;
+        
+        // synthCountdown -= deltaTime;
+        // let period = 2000;
 
-        if (synthCountdown <= 0)
-        {
-            synthCounter++;
-            // if (synthCounter % 2 == 0) {
-            //     synth2.triggerAttackRelease("C2", "8n");
-            // }
-            // else {
-                synth.envelope.attack = config.synth.attack;
-                synth.envelope.decay = config.synth.decay;
-                synth.envelope.sustain = config.synth.sustain;
-                synth.envelope.release = config.synth.release;
-                synth.triggerAttackRelease("C2", "8n");
-            // }
-            synthCountdown += 2000;
-            if (synthCountdown < 0) synthCountdown = 2000;
-        }
+        // synth.setNote(config.frequency);
+
+        // if (synthCountdown <= 0)
+        // {
+        //     synthCounter++;
+        //     if (synthCounter % 2 == 0) {
+        //         synth2.attackNoise = config.pluck.attackNoise;
+        //         synth2.dampening = config.pluck.dampening;
+        //         synth2.resonance = config.pluck.resonance;
+        //         synth2.release = config.pluck.release;
+        //         synth2.triggerAttack(config.frequency);
+        //         synth.envelope.attack = config.synth.attack;
+        //         synth.envelope.decay = config.synth.decay;
+        //         synth.envelope.sustain = config.synth.sustain;
+        //         synth.envelope.release = config.synth.release;
+        //         synth.volume.value = config.synth.volume;
+        //         //synth.triggerAttackRelease(config.frequency, "8n");
+        //     }
+        //     else {
+        //         synth2.triggerRelease();
+        //         //synth.triggerRelease();
+        //     }
+        //     synthCountdown += period;
+        //     if (synthCountdown < 0) synthCountdown = period;
+        // }
     }
 }
 renderer.setAnimationLoop( animate );
-
-console.log(scene);
