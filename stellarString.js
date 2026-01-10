@@ -39,7 +39,12 @@ export default class stellarString
         this.crossResult = new THREE.Vector3();
         for (let i = 0; i < planetsToCare.length; ++i)
         {
-            this.deltaPlanet.copy(planetsToCare[i].mesh.position).sub(this.from.position);
+            if (this.planetsToCare[i] == this.from && this.planetsToCare[i] == this.to) {
+                this.planetsCrossProducts.push(0);
+                continue;
+            }
+
+            this.deltaPlanet.copy(planetsToCare[i].position).sub(this.from.position);
             this.crossResult.crossVectors(this.deltaString, this.deltaPlanet);
             this.planetsCrossProducts.push(this.crossResult.y);
         }
@@ -55,7 +60,9 @@ export default class stellarString
         let stringLength = this.deltaString.length();
         for (let i = 0; i < this.planetsToCare.length; ++i)
         {
-            this.deltaPlanet.copy(this.planetsToCare[i].mesh.position).sub(this.from.position);
+            if (this.planetsToCare[i] == this.from && this.planetsToCare[i] == this.to) continue;
+
+            this.deltaPlanet.copy(this.planetsToCare[i].position).sub(this.from.position);
             this.crossResult.crossVectors(this.deltaString, this.deltaPlanet);
             let cross = this.crossResult.y;
             let lastCross = this.planetsCrossProducts[i];

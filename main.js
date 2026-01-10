@@ -169,15 +169,30 @@ let accTimeDays = 0;
 // let synthCountdown = 0;
 // let synthCounter = 0;
 
+// Strings:
 var strings = [];
+
+// var actors = [];
+// var white = new THREE.Color(0xffffff);
+// actors.push(sun);
+// planets.forEach((p) => actors.push(p.mesh));
+// for (let i = 0; i < actors.length; ++i) {
+//     let p1 = actors[i];
+//     //if (i != 2) continue;
+//     for (let j = i + 1; j < actors.length; ++j)
+//     {
+//         strings.push(new stellarString(config, scene, actors[i], actors[j], i == 0? planets[j-1].color : white, actors));
+//     }
+// }
 
 for (let i = 1; i < planets.length; ++i)
 {
     let cares = [];
-    for (let j = i-1; j >= 0; --j) cares.push(planets[j]);
+    for (let j = i-1; j >= 0; --j) cares.push(planets[j].mesh);
     let string = new stellarString(config, scene, sun, planets[i].mesh, planets[i].color, cares);
     strings.push(string);
 }
+//
 
 function animate() {
     let currentTimeMS = Date.now();
