@@ -40,6 +40,7 @@ export default class stellarString
         this.deltaString = this.to.position.clone().sub(this.from.position);
         this.deltaPlanet = new THREE.Vector3();
         this.crossResult = new THREE.Vector3();
+        this.projectionResult = new THREE.Vector3();
         for (let i = 0; i < planetsToCare.length; ++i)
         {
             if (this.planetsToCare[i] == this.from && this.planetsToCare[i] == this.to) {
@@ -64,14 +65,16 @@ export default class stellarString
         for (let i = 0; i < this.planetsToCare.length; ++i)
         {
             if (this.planetsToCare[i] == this.from && this.planetsToCare[i] == this.to) continue;
+            if (!this.planetsToCare[i].plucking) continue;
 
             this.deltaPlanet.copy(this.planetsToCare[i].position).sub(this.from.position);
             this.crossResult.crossVectors(this.deltaString, this.deltaPlanet);
             let cross = this.crossResult.y;
             let lastCross = this.planetsCrossProducts[i];
-            let aux = this.deltaString.dot(this.deltaPlanet);
+            this.projectionResult.copy(this.deltaPlanet).projectOnVector(this.deltaString);
+            let dot = this.deltaString.normalize().dot(this.projectionResult);
 
-            if (lastCross > 0 && cross <= 0 && aux > 0 && aux < stringLength && audioReady && !pluckedThisFrame) {
+            if (Math.sign(cross) != Math.sign(lastCross) && dot > 0 && dot < stringLength && audioReady && !pluckedThisFrame) {
                 pluckedThisFrame = true;
                 this.pluckedBy(this.planetsToCare[i]);
             }

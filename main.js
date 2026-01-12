@@ -33,6 +33,7 @@ let config = {
         cameraHeight: 4,
         marginPercentage: 0.1,
         usabilityFactor: 0,
+        doMousePluck: false,
     },
     synth: {
         attack: 0.12,
@@ -59,6 +60,12 @@ document.addEventListener("click", async () => {
 
 const canvas = document.getElementById("canvas");
 const safearea = document.getElementById("safe-area");
+let mousePosition = new THREE.Vector2();
+safearea.addEventListener('mousemove', function(ev) {
+    let rect = safearea.getBoundingClientRect();
+    mousePosition.x = ev.clientX - rect.left;
+    mousePosition.y = ev.clientY - rect.top;
+});
 
 const gui = new dat.GUI({name: 'settings'});
 const scene = new THREE.Scene();
@@ -83,6 +90,7 @@ let uxGUI = gui.addFolder("UX");
 uxGUI.add(config.ux, "cameraHeight", 3, 15);
 uxGUI.add(config.ux, "marginPercentage", 0, 0.9);
 uxGUI.add(config.ux, "usabilityFactor", 0, 1);
+uxGUI.add(config.ux, "doMousePluck");
 uxGUI.open();
 // let synthGUI = gui.addFolder("Synth");
 // synthGUI.add(config.synth, "attack", 0, 2);
@@ -207,10 +215,22 @@ var strings = [];
 //     }
 // }
 
+let mousePluck = new THREE.Object3D("mouse");
+// {
+//     const geometry = new THREE.BoxGeometry( 0.1, 0.1, 0.1 );
+//     const material = new THREE.MeshBasicMaterial( { color: 0x00ff00 } );
+//     mousePluck = new THREE.Mesh( geometry, material );
+//     scene.add( mousePluck );
+// }
+mousePluck.plucking = config.ux.doMousePluck;
+
 for (let i = 1; i < planets.length; ++i)
 {
-    let cares = [];
-    for (let j = i-1; j >= 0; --j) cares.push(planets[j].realObject);
+    let cares = [mousePluck];
+    for (let j = i-1; j >= 0; --j) {
+        cares.push(planets[j].realObject);
+        planets[j].realObject.plucking = true;
+    }
     let string = new stellarString(config, scene, sun, planets[i].realObject, planets[i].color, cares, sun, planets[i].mesh);
     strings.push(string);
 }
@@ -225,6 +245,9 @@ function animate() {
     accTimeMS += deltaTime;
     accTimeDays += deltaTime/1000 * config.daysPerSecond;
 
+    mousePluck.plucking = config.ux.doMousePluck;
+    mousePluck.position.set(mousePosition.x/safeWidth - 0.5, 0, mousePosition.y/safeHeight - 0.5);
+
     let uf = config.ux.usabilityFactor;
 
     camera.position.y = THREE.MathUtils.lerp(config.camera.y, config.ux.cameraHeight, uf);
@@ -238,7 +261,11 @@ function animate() {
     sunSize = lerp(sunSize, directSunScaledSize, config.realisticScaleFactor);
     sun.scale.set(sunSize,sunSize,sunSize);
 
-    let cameraHalfHeight = config.ux.cameraHeight * Math.tan(config.camera.fov * 0.5 * THREE.MathUtils.DEG2RAD);
+    let cameraHalfHeight = camera.position.y * Math.tan(config.camera.fov * 0.5 * THREE.MathUtils.DEG2RAD);
+    let cameraHalfWidth = cameraHalfHeight * safeAR;
+    mousePluck.position.x *= cameraHalfWidth * 2;
+    mousePluck.position.z *= cameraHalfHeight * 2;
+
     let maxUxRadius = cameraHalfHeight;
     if (safeAR < 1) {
         maxUxRadius *= safeAR;
