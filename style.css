@@ -22,6 +22,10 @@ body {
     text-align: left;
     flex-direction: column;
     touch-action:none;
+
+    -webkit-user-select: none; /* Safari */
+    -ms-user-select: none; /* IE 10 and IE 11 */
+    user-select: none; /* Standard syntax */
 }
 @supports (padding-top: env(safe-area-inset-top)) {
     #safe-area {
