@@ -1,5 +1,5 @@
 import { MathUtils } from "three";
-import { Mesh, MeshBasicMaterial, MeshLambertMaterial, MeshPhongMaterial, Sphere, SphereGeometry, Vector3 } from "three/webgpu";
+import { Mesh, MeshBasicMaterial, MeshLambertMaterial, MeshPhongMaterial, Object3D, Sphere, SphereGeometry, Vector3 } from "three/webgpu";
 import { AU } from "./constants";
 
 function sin (d) {
@@ -26,15 +26,17 @@ export default class planet
         this.radius = radius;
         this.color = color;
         this.computedPosition = new Vector3();
+        this.meshPosition = new Vector3();
 
         this.geometry = new SphereGeometry(1, 32);
 
         this.material = new MeshPhongMaterial( { color: color, emissive: color, emissiveIntensity: 0.03 } );
         this.mesh = new Mesh( this.geometry, this.material );
+        this.realObject = new Object3D();
 
         let size = radius / AU;
         this.mesh.scale.set(size,size,size);
-        console.log(this);
+        //console.log(this);
         scene.add(this.mesh);
     }
 
@@ -109,9 +111,18 @@ export default class planet
         this.computedPosition.set(a * (Math.cos(E) - e), 0, a * (Math.sqrt(1 - (e * e))) * Math.sin(E));
     }
 
-    update()
+    update(uxDistanceFromSun, uxFactor)
     {
-        this.mesh.position.copy(this.computedPosition);
+        if (uxFactor > 0) {
+            //let distanceFromSun = this.computedPosition.length();
+            this.meshPosition.copy(this.computedPosition).normalize().multiplyScalar(uxDistanceFromSun);
+            this.mesh.position.lerpVectors(this.computedPosition, this.meshPosition, uxFactor);
+            //console.log(this.name, uxDistanceFromSun, this.computedPosition, this.meshPosition);
+        }
+        else {
+            this.mesh.position.copy(this.computedPosition);
+        }
+        this.realObject.position.copy(this.computedPosition);
     }
 }
 

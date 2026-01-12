@@ -11,14 +11,14 @@ import stellarString from './stellarString';
 // Stellar system harp
 // Star system harp
 
-// Solar System Strings S^3
+// Solar System String sequencer S^4
 
 let config = {
-    daysPerSecond: 29,
+    daysPerSecond: 28,
     unifiedScaleFactor: 0.15,
     realisticScaleFactor: 0.94,
     unifiedScale: 8,
-    realisticScale: 55,
+    realisticScale: 26,
     camera: {
         y: 6,
         fov: 75, 
@@ -27,11 +27,11 @@ let config = {
         intensity:12,
     },
     bg: {
-        color: "#0a0a0a",
+        backgroundColor: "#0a0a0a",
     },
     ux: {
-        planetSize: 0.05,
-        sunSize: 0.1,
+        cameraHeight: 4,
+        marginPercentage: 0.1,
         usabilityFactor: 0,
     },
     synth: {
@@ -64,6 +64,10 @@ const gui = new dat.GUI({name: 'settings'});
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera( config.camera.fov, window.innerWidth / window.innerHeight, 0.001, 1000 );
 
+var bgColor = gui.addColor(config.bg, "backgroundColor");
+bgColor.onChange((v) => {
+    scene.background.set(v);
+})
 gui.add(config, "daysPerSecond", 1, 365);
 let cameraGUI = gui.addFolder("Camera");
 cameraGUI.add(config.camera, "y", 0, 100);
@@ -76,36 +80,40 @@ scaleGUI.add(config, "unifiedScaleFactor", 0, 1);
 scaleGUI.add(config, "unifiedScale", 1, 65);
 scaleGUI.add(config, "realisticScale", 1, 65);
 let uxGUI = gui.addFolder("UX");
-uxGUI.add(config.ux, "planetSize", 0.01, 0.2);
-uxGUI.add(config.ux, "sunSize", 0.01, 0.2);
+uxGUI.add(config.ux, "cameraHeight", 3, 15);
+uxGUI.add(config.ux, "marginPercentage", 0, 0.9);
 uxGUI.add(config.ux, "usabilityFactor", 0, 1);
 uxGUI.open();
-let synthGUI = gui.addFolder("Synth");
-synthGUI.add(config.synth, "attack", 0, 2);
-synthGUI.add(config.synth, "decay", 0, 2);
-synthGUI.add(config.synth, "sustain", 0, 1);
-synthGUI.add(config.synth, "release", 0, 2);
-synthGUI.add(config.synth, "volume", 0, 1);
+// let synthGUI = gui.addFolder("Synth");
+// synthGUI.add(config.synth, "attack", 0, 2);
+// synthGUI.add(config.synth, "decay", 0, 2);
+// synthGUI.add(config.synth, "sustain", 0, 1);
+// synthGUI.add(config.synth, "release", 0, 2);
+// synthGUI.add(config.synth, "volume", 0, 1);
 let pluckGUI = gui.addFolder("Pluck");
 pluckGUI.add(config.pluck, "attackNoise", 0.1, 1.5, 0.05);
 pluckGUI.add(config.pluck, "dampening", 0, 7000);
 pluckGUI.add(config.pluck, "resonance", 0, 1);
 pluckGUI.add(config.pluck, "release", 0.01, 10);
-pluckGUI.open();
 
 let needCheckResize = true;
 let safeWidth = 0;
 let safeHeight = 0;
+let windowWidth = 0;
+let windowHeight = 0;
+let safeAR = 1;
 function checkWindowResize() {
     let safeareawidth = safearea.offsetWidth;
     let safeareaheight = safearea.offsetHeight;
     if (safeWidth != safeareawidth || safeHeight != safeareaheight || needCheckResize) {
         safeWidth = safeareawidth;
         safeHeight = safeareaheight;
+        safeAR = safeareawidth / safeareaheight;
+        windowWidth = window.innerWidth;
+        windowHeight = window.innerHeight;
 
-        // let safearearatio = safeareawidth / safeareaheight;
-        renderer.setSize(window.innerWidth, window.innerHeight, true);
-        camera.aspect = window.innerWidth / window.innerHeight;
+        renderer.setSize(windowWidth, windowHeight, true);
+        camera.aspect = windowWidth / windowHeight;
     }
 }
 
@@ -118,11 +126,7 @@ const sunRadius = 696340;
 const sunLight = new THREE.PointLight(0xfffffe, config.sun.intensity, 0, 0);
 sun.add(sunLight);
 scene.add( sun );
-scene.background = new THREE.Color(config.bg.color);
-var bgColor = gui.addColor(config.bg, "color");
-bgColor.onChange((v) => {
-    scene.background.set(v);
-})
+scene.background = new THREE.Color(config.bg.backgroundColor);
 
 
 camera.position.z = 0;
@@ -206,8 +210,8 @@ var strings = [];
 for (let i = 1; i < planets.length; ++i)
 {
     let cares = [];
-    for (let j = i-1; j >= 0; --j) cares.push(planets[j].mesh);
-    let string = new stellarString(config, scene, sun, planets[i].mesh, planets[i].color, cares);
+    for (let j = i-1; j >= 0; --j) cares.push(planets[j].realObject);
+    let string = new stellarString(config, scene, sun, planets[i].realObject, planets[i].color, cares, sun, planets[i].mesh);
     strings.push(string);
 }
 //
@@ -221,7 +225,9 @@ function animate() {
     accTimeMS += deltaTime;
     accTimeDays += deltaTime/1000 * config.daysPerSecond;
 
-    camera.position.y = config.camera.y;
+    let uf = config.ux.usabilityFactor;
+
+    camera.position.y = THREE.MathUtils.lerp(config.camera.y, config.ux.cameraHeight, uf);
     camera.fov = config.camera.fov;
     camera.updateProjectionMatrix();
 
@@ -232,14 +238,30 @@ function animate() {
     sunSize = lerp(sunSize, directSunScaledSize, config.realisticScaleFactor);
     sun.scale.set(sunSize,sunSize,sunSize);
 
-    planets.forEach((p) => {
+    let cameraHalfHeight = config.ux.cameraHeight * Math.tan(config.camera.fov * 0.5 * THREE.MathUtils.DEG2RAD);
+    let maxUxRadius = cameraHalfHeight;
+    if (safeAR < 1) {
+        maxUxRadius *= safeAR;
+
+        let safePercentage = safeWidth / windowWidth;
+        maxUxRadius *= safePercentage;
+    }
+    else {
+        let safePercentage = safeHeight / windowHeight;
+        maxUxRadius *= safePercentage;
+    }
+    maxUxRadius -= maxUxRadius * config.ux.marginPercentage;
+
+    for (let i = 0; i < planets.length; ++i) {
+        let p = planets[i];
+        let uxRadius = (i + 1) * maxUxRadius / planets.length;
         p.computeCoordinates(accTimeDays);
-        p.update();
+        p.update(uxRadius, config.ux.usabilityFactor);
         let size = lerp(p.radius / AU, config.unifiedScale, config.unifiedScaleFactor);
         let directScaledSize = config.realisticScale * p.radius / AU;
         size = lerp(size, directScaledSize, config.realisticScaleFactor);
         p.mesh.scale.set(size,size,size);
-    });
+    }
 
     strings.forEach((s) => {
         s.update(audioReady, accTimeMS, deltaTime);

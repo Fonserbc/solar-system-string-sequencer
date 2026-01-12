@@ -11,23 +11,26 @@ export default class stellarString
      * Tension of a stellar string for v = c
      * T = V^2 * LD => c^2 => 8.987551787368176e+16 m*kg/s2=>N
      * 
-     * Assume string is tense to allow wave to travel at the speed of light c
+     * Assume string is tense enough to allow wave to travel at the speed of light c
      * 
      * Frequency = Velocity / 2Length
      */
 
-    constructor(config, scene, fromObject, toObject, color, planetsToCare)
+    constructor(config, scene, fromObject, toObject, color, planetsToCare, fromObjectVisual, toObjectVisual)
     {
         this.pluck = new Tone.PluckSynth(config.pluck).toDestination();
 
         this.from = fromObject;
-        this.config = config;
         this.to = toObject;
+        this.config = config;
+        this.fromVisual = fromObjectVisual === undefined? this.from : fromObjectVisual;
+        this.toVisual = toObjectVisual === undefined? this.to : toObjectVisual;
         this.planetsToCare = planetsToCare;
         this.lastPluckedTime = Tone.now();
+        console.log(this.from, this.to, planetsToCare);
 
         this.points = [];
-        this.points.push(fromObject.position.clone(), toObject.position.clone());
+        this.points.push(this.fromVisual.position.clone(), this.toVisual.position.clone());
         this.material = new THREE.LineBasicMaterial({color: color});
         this.geometry = new THREE.BufferGeometry().setFromPoints(this.points);
         this.line = new THREE.Line(this.geometry, this.material);
@@ -51,8 +54,8 @@ export default class stellarString
     }
 
     update(audioReady, time, deltaTime) {
-        this.points[0].copy(this.from.position);
-        this.points[1].copy(this.to.position);
+        this.points[0].copy(this.fromVisual.position);
+        this.points[1].copy(this.toVisual.position);
         this.geometry.setFromPoints(this.points);
         let pluckedThisFrame = false;
 
