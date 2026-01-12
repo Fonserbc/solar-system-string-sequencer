@@ -27,7 +27,7 @@ let config = {
         intensity:12,
     },
     bg: {
-        color: "#000000",
+        color: "#0a0a0a",
     },
     ux: {
         planetSize: 0.05,
@@ -57,6 +57,8 @@ document.addEventListener("click", async () => {
     }
 });
 
+const canvas = document.getElementById("canvas");
+const safearea = document.getElementById("safe-area");
 
 const gui = new dat.GUI({name: 'settings'});
 const scene = new THREE.Scene();
@@ -91,7 +93,23 @@ pluckGUI.add(config.pluck, "resonance", 0, 1);
 pluckGUI.add(config.pluck, "release", 0.01, 10);
 pluckGUI.open();
 
-const renderer = new THREE.WebGPURenderer();
+let needCheckResize = true;
+let safeWidth = 0;
+let safeHeight = 0;
+function checkWindowResize() {
+    let safeareawidth = safearea.offsetWidth;
+    let safeareaheight = safearea.offsetHeight;
+    if (safeWidth != safeareawidth || safeHeight != safeareaheight || needCheckResize) {
+        safeWidth = safeareawidth;
+        safeHeight = safeareaheight;
+
+        // let safearearatio = safeareawidth / safeareaheight;
+        renderer.setSize(window.innerWidth, window.innerHeight, true);
+        camera.aspect = window.innerWidth / window.innerHeight;
+    }
+}
+
+const renderer = new THREE.WebGPURenderer({canvas: canvas});
 renderer.setSize( window.innerWidth, window.innerHeight );
 document.body.appendChild( renderer.domElement );
 
@@ -195,6 +213,8 @@ for (let i = 1; i < planets.length; ++i)
 //
 
 function animate() {
+    checkWindowResize()
+
     let currentTimeMS = Date.now();
     let deltaTime = currentTimeMS - timeMS;
     timeMS = currentTimeMS;

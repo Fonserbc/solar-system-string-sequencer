@@ -1,0 +1,49 @@
+body {
+    font-family: monospace;
+    color: white;
+    overflow: hidden;
+    margin: 0;
+    background-color: black;
+}
+#safe-area {
+    position: fixed;
+    top: 0px;
+    bottom: 0px;
+    left: 0px;
+    right: 0px;
+    /*width: 100%;
+    height: 100%;*/
+    overflow: hidden;
+    margin: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    height: 100%;
+
+    display: flex;
+    align-items: center;
+    text-align: left;
+    flex-direction: column;
+    touch-action:none;
+}
+@supports (padding-top: env(safe-area-inset-top)) {
+    #safe-area {
+        --safe-area-inset-top: env(safe-area-inset-top);
+        height: calc(100% + var(--safe-area-inset-top));
+    }
+}
+@media (display-mode: fullscreen) {
+    #safe-area {
+        height: 100%;
+    }
+}
+
+#overlay-ui {
+    margin-left: .67em;
+}
+#canvas-container {
+    width: 100%;
+    height: 100%;
+}
+#canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
