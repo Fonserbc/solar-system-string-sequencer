@@ -105,44 +105,6 @@ canvas.addEventListener("pointerdown", async () => {
     }
 });
 
-let lastPointerPosition = new THREE.Vector2();
-let pointerPosition = new THREE.Vector2();
-let deltaPointerPosition = new THREE.Vector2();
-let pointerNormalizedPosition = new THREE.Vector2();
-let pointerDown = false;
-let pointerWasDown = false;
-let buildingString = false;
-function processPointer(ev) {
-    lastPointerPosition.copy(pointerPosition);
-    let rect = canvas.getBoundingClientRect();
-    pointerPosition.x = ev.clientX - rect.left;
-    pointerPosition.y = ev.clientY - rect.top;
-    pointerNormalizedPosition.x = pointerPosition.x / windowWidth * 2 - 1;
-    pointerNormalizedPosition.y = pointerPosition.y / windowHeight * 2 - 1;
-    pointerNormalizedPosition.y *= -1;
-    if (!pointerWasDown && pointerDown)
-        lastPointerPosition.copy(pointerPosition);
-    deltaPointerPosition.subVectors(pointerPosition, lastPointerPosition);
-    pointerWasDown = pointerDown;
-}
-canvas.addEventListener('pointermove', function(ev) {
-    processPointer(ev);
-    if (pointerDown && !buildingString && config.ux.usabilityFactor == 0)
-    {
-        moveCamera(ev);
-    }
-});
-canvas.addEventListener('pointerdown', function(ev) {
-    pointerDown = true;
-    processPointer(ev);
-});
-canvas.addEventListener('pointerup', function (ev) {
-    pointerDown = false;
-});
-document.addEventListener('wheel', function(ev) {
-    config.camera.distance = THREE.MathUtils.clamp(config.camera.distance + ev.deltaY * config.camera.scrollSpeed, 2, 100);
-});
-
 // const loader = new EXRLoader();
 // loader.load( 'data/starmap_2020_4k.exr', (t) => {
 //     t.mapping = THREE.EquirectangularReflectionMapping;
@@ -289,10 +251,10 @@ let accTimeDays = 0;
 // Strings:
 var strings = [];
 
-// var actors = [];
+var interactables = [];
 // var white = new THREE.Color(0xffffff);
-// actors.push(sun);
-// planets.forEach((p) => actors.push(p.mesh));
+interactables.push(sun);
+planets.forEach((p) => interactables.push(p.mesh));
 // for (let i = 0; i < actors.length; ++i) {
 //     let p1 = actors[i];
 //     //if (i != 2) continue;
@@ -319,7 +281,104 @@ for (let i = 1; i < planets.length; ++i)
     let string = new stellarString(config, scene, sun, planets[i].realObject, planets[i].color, cares, sun, planets[i].mesh);
     strings.push(string);
 }
-//
+//#region Pointer interaction
+let lastPointerPosition = new THREE.Vector2();
+let pointerPosition = new THREE.Vector2();
+let deltaPointerPosition = new THREE.Vector2();
+let pointerNormalizedPosition = new THREE.Vector2();
+let pointerDown = false;
+let pointerWasDown = false;
+let buildingString = false;
+function processPointer(ev) {
+    lastPointerPosition.copy(pointerPosition);
+    let rect = canvas.getBoundingClientRect();
+    pointerPosition.x = ev.clientX - rect.left;
+    pointerPosition.y = ev.clientY - rect.top;
+    pointerNormalizedPosition.x = pointerPosition.x / windowWidth * 2 - 1;
+    pointerNormalizedPosition.y = pointerPosition.y / windowHeight * 2 - 1;
+    pointerNormalizedPosition.y *= -1;
+    if (!pointerWasDown && pointerDown)
+        lastPointerPosition.copy(pointerPosition);
+    deltaPointerPosition.subVectors(pointerPosition, lastPointerPosition);
+    pointerWasDown = pointerDown;
+}
+
+let lastClickedInteractable = -1;
+let uxfAnimTime = 0;
+let uxfAnimStart = 0;
+const uxfAnimTotalTime = 1;
+function checkPointerInteraction() {
+    
+    mouseRaycaster.setFromCamera(pointerNormalizedPosition, camera);
+
+    let closestInteractable = -1;
+    let combinedDistance = 1000000000;
+    let clickedInteractable = false;
+    for (let i = 0; i < interactables.length; ++i)
+    {
+        let d = mouseRaycaster.ray.distanceSqToPoint(interactables[i].position);
+        let c = camera.position.distanceToSquared(interactables[i].position);
+        //console.log(i, d, c, d / c);
+        if (d / c < combinedDistance)
+        {
+            combinedDistance = d / c;
+            closestInteractable = i;
+        }
+    }
+
+    if (combinedDistance < 0.001)
+    {
+        clickedInteractable = true;
+    }
+
+    if (buildingString)
+    {
+        if (!clickedInteractable || lastClickedInteractable == closestInteractable) {
+            buildingString = false;
+            uxfAnimTime = 0;
+            uxfAnimStart = config.ux.usabilityFactor;
+            console.log("cancelling string");
+            lastClickedInteractable = -1;
+        }
+        else if (clickedInteractable)
+        {
+            console.log("making string between", lastClickedInteractable, closestInteractable);
+            // potentially remove string
+            buildingString = false;
+            lastClickedInteractable = -1;
+            uxfAnimTime = 0;
+            uxfAnimStart = config.ux.usabilityFactor;
+        }
+    }
+    else {
+        if (clickedInteractable) {
+            buildingString = true;
+            uxfAnimTime = 0;
+            uxfAnimStart = config.ux.usabilityFactor;
+            lastClickedInteractable = closestInteractable
+        }
+    }
+}
+
+canvas.addEventListener('pointermove', function(ev) {
+    processPointer(ev);
+    if (pointerDown && !buildingString)
+    {
+        moveCamera(ev);
+    }
+});
+canvas.addEventListener('pointerdown', function(ev) {
+    pointerDown = true;
+    processPointer(ev);
+    checkPointerInteraction();
+});
+canvas.addEventListener('pointerup', function (ev) {
+    pointerDown = false;
+});
+document.addEventListener('wheel', function(ev) {
+    config.camera.distance = THREE.MathUtils.clamp(config.camera.distance + ev.deltaY * config.camera.scrollSpeed, 2, 100);
+});
+//#endregion
 
 let mouseRaycaster = new THREE.Raycaster();
 let mouseInteractionPlane = new THREE.Plane(new THREE.Vector3(0,1, 0), 0);
@@ -333,6 +392,13 @@ function animate() {
     timeMS = currentTimeMS;
     accTimeMS += deltaTime;
     accTimeDays += deltaTime/1000 * config.daysPerSecond;
+
+    if (uxfAnimTime >= 0) {
+        uxfAnimTime += deltaTime/1000;
+        let t = uxfAnimTime / uxfAnimTotalTime;
+        config.ux.usabilityFactor = THREE.MathUtils.lerp(uxfAnimStart, buildingString? 1 : 0, THREE.MathUtils.smootherstep(t, 0, 1));
+        if (t >= 1) uxfAnimTime = -1;
+    }    
 
     let uf = config.ux.usabilityFactor;
 
