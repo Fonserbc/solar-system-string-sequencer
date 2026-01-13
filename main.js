@@ -6,6 +6,7 @@ import { lerp } from 'three/src/math/MathUtils';
 import * as dat from 'dat.gui';
 import * as Tone from 'tone';
 import stellarString from './stellarString';
+import starfield from './starfield';
 
 // Solar system harp
 // Stelar harp
@@ -25,7 +26,8 @@ let config = {
         fov: 75, 
         distance: 7,
         startingAngle: 30,
-        rotatingSpeed: Math.PI
+        rotatingSpeed: Math.PI,
+        scrollSpeed: 0.01,
     },
     sun: {
         intensity:12,
@@ -56,7 +58,7 @@ let config = {
     },
     debug: {
         mouseStatus: false,
-    }
+    },
 }
 
 let audioReady = false;
@@ -65,7 +67,7 @@ const safearea = document.getElementById("safe-area");
 
 const gui = new dat.GUI({name: 'settings'});
 const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera( config.camera.fov, window.innerWidth / window.innerHeight, 0.001, 1000 );
+const camera = new THREE.PerspectiveCamera( config.camera.fov, window.innerWidth / window.innerHeight, 0.001, 1024 );
 const cameraRotatingPivot = new THREE.Object3D();
 const cameraDistancePivot = new THREE.Object3D();
 cameraRotatingPivot.add(cameraDistancePivot);
@@ -137,6 +139,9 @@ canvas.addEventListener('pointerdown', function(ev) {
 canvas.addEventListener('pointerup', function (ev) {
     pointerDown = false;
 });
+document.addEventListener('wheel', function(ev) {
+    config.camera.distance = THREE.MathUtils.clamp(config.camera.distance + ev.deltaY * config.camera.scrollSpeed, 2, 100);
+});
 
 // const loader = new EXRLoader();
 // loader.load( 'data/starmap_2020_4k.exr', (t) => {
@@ -155,6 +160,7 @@ let cameraGUI = gui.addFolder("Camera");
 cameraGUI.add(config.camera, "distance", 1, 40);
 cameraGUI.add(config.camera, "fov", 5, 110);
 cameraGUI.add(config.camera, "rotatingSpeed", 0.01, Math.PI * 2);
+cameraGUI.add(config.camera, "scrollSpeed", 0, 10, 0.01);
 let sunGUI = gui.addFolder("Sun");
 sunGUI.add(config.sun, "intensity", 0, 20);
 let scaleGUI = gui.addFolder("Scale")
@@ -207,6 +213,8 @@ function checkWindowResize() {
 const renderer = new THREE.WebGPURenderer({canvas: canvas});
 renderer.setSize( window.innerWidth, window.innerHeight );
 document.body.appendChild( renderer.domElement );
+
+const starField = new starfield(config, scene);
 
 const sun = new THREE.Mesh( new THREE.SphereGeometry( 1, 32), new THREE.MeshBasicMaterial( { color: 0xffffdd } ));
 const sunRadius = 696340;
