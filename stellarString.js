@@ -27,7 +27,7 @@ export default class stellarString
         this.toVisual = toObjectVisual === undefined? this.to : toObjectVisual;
         this.planetsToCare = planetsToCare;
         this.lastPluckedTime = Tone.now();
-        console.log(this.from, this.to, planetsToCare);
+        //console.log(this.from, this.to, planetsToCare);
 
         this.points = [];
         this.points.push(this.fromVisual.position.clone(), this.toVisual.position.clone());
@@ -85,7 +85,7 @@ export default class stellarString
 
     pluckedBy(planet) {
         let stringLength = this.from.position.distanceTo(this.to.position);
-        let frequency = c / AU / stringLength;
+        let frequency = this.config.soundVelocity * c / AU / stringLength;
         let simulationFrequency = frequency * 86400 * this.config.daysPerSecond;
 
         let now = Tone.now();

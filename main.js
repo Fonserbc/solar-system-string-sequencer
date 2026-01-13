@@ -1,4 +1,5 @@
 import * as THREE from 'three/webgpu';
+import { EXRLoader } from 'three/addons/loaders/EXRLoader.js';
 import planet from './planet';
 import { AU } from './constants';
 import { lerp } from 'three/src/math/MathUtils';
@@ -14,14 +15,17 @@ import stellarString from './stellarString';
 // Solar System String sequencer S^4
 
 let config = {
-    daysPerSecond: 28,
+    daysPerSecond: 12, // 28
+    soundVelocity: 0.75, // as a percentage of the speed of light, 1 = c
     unifiedScaleFactor: 0.15,
     realisticScaleFactor: 0.94,
     unifiedScale: 8,
     realisticScale: 26,
     camera: {
-        y: 6,
         fov: 75, 
+        distance: 7,
+        startingAngle: 30,
+        rotatingSpeed: Math.PI
     },
     sun: {
         intensity:12,
@@ -34,6 +38,8 @@ let config = {
         marginPercentage: 0.1,
         usabilityFactor: 0,
         doMousePluck: false,
+        planetsVsSpaceFactor: 0.5,
+        sunSizeMultiplier: 3,
     },
     synth: {
         attack: 0.12,
@@ -47,38 +53,108 @@ let config = {
         dampening: 1111,
         resonance: 0.975,
         release: 6.4
+    },
+    debug: {
+        mouseStatus: false,
     }
 }
 
 let audioReady = false;
-document.addEventListener("click", async () => {
+const canvas = document.getElementById("canvas");
+const safearea = document.getElementById("safe-area");
+
+const gui = new dat.GUI({name: 'settings'});
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera( config.camera.fov, window.innerWidth / window.innerHeight, 0.001, 1000 );
+const cameraRotatingPivot = new THREE.Object3D();
+const cameraDistancePivot = new THREE.Object3D();
+cameraRotatingPivot.add(cameraDistancePivot);
+cameraDistancePivot.position.z = config.camera.distance;
+cameraRotatingPivot.setRotationFromAxisAngle(new THREE.Vector3(-1,0,0), 15 * THREE.MathUtils.DEG2RAD);
+cameraDistancePivot.quaternion.copy(cameraRotatingPivot.quaternion);
+scene.add(cameraRotatingPivot);
+
+const VECTOR3 = {
+    UP: new THREE.Vector3(0,1,0),
+    DOWN: new THREE.Vector3(0,-1,0),
+    LEFT: new THREE.Vector3(1,0,0),
+    RIGHT: new THREE.Vector3(-1,0,0),
+    FORWARD: new THREE.Vector3(0,0,1),
+}
+
+let camMovementQuat = new THREE.Quaternion();
+let camMovementVec = new THREE.Vector3();
+function moveCamera(ev) {
+    let x = deltaPointerPosition.x*config.camera.rotatingSpeed/windowHeight;
+    let y = deltaPointerPosition.y*config.camera.rotatingSpeed/windowHeight;
+    camMovementVec.copy(VECTOR3.DOWN);//.applyQuaternion(cameraRotatingPivot.quaternion);
+    camMovementQuat.setFromAxisAngle(camMovementVec, x);
+    cameraRotatingPivot.quaternion.multiply(camMovementQuat);
+    camMovementVec.copy(VECTOR3.RIGHT);//.applyQuaternion(cameraRotatingPivot.quaternion);
+    camMovementQuat.setFromAxisAngle(camMovementVec, y);
+    cameraRotatingPivot.quaternion.multiply(camMovementQuat);
+    cameraDistancePivot.quaternion.copy(cameraRotatingPivot.quaternion);
+}
+
+canvas.addEventListener("pointerdown", async () => {
     if (!audioReady) {
         await Tone.start();
         audioReady = true;
     }
 });
 
-const canvas = document.getElementById("canvas");
-const safearea = document.getElementById("safe-area");
-let mousePosition = new THREE.Vector2();
-safearea.addEventListener('mousemove', function(ev) {
-    let rect = safearea.getBoundingClientRect();
-    mousePosition.x = ev.clientX - rect.left;
-    mousePosition.y = ev.clientY - rect.top;
+let lastPointerPosition = new THREE.Vector2();
+let pointerPosition = new THREE.Vector2();
+let deltaPointerPosition = new THREE.Vector2();
+let pointerNormalizedPosition = new THREE.Vector2();
+let pointerDown = false;
+let pointerWasDown = false;
+let buildingString = false;
+function processPointer(ev) {
+    lastPointerPosition.copy(pointerPosition);
+    let rect = canvas.getBoundingClientRect();
+    pointerPosition.x = ev.clientX - rect.left;
+    pointerPosition.y = ev.clientY - rect.top;
+    pointerNormalizedPosition.x = pointerPosition.x / windowWidth * 2 - 1;
+    pointerNormalizedPosition.y = pointerPosition.y / windowHeight * 2 - 1;
+    pointerNormalizedPosition.y *= -1;
+    if (!pointerWasDown && pointerDown)
+        lastPointerPosition.copy(pointerPosition);
+    deltaPointerPosition.subVectors(pointerPosition, lastPointerPosition);
+    pointerWasDown = pointerDown;
+}
+canvas.addEventListener('pointermove', function(ev) {
+    processPointer(ev);
+    if (pointerDown && !buildingString && config.ux.usabilityFactor == 0)
+    {
+        moveCamera(ev);
+    }
+});
+canvas.addEventListener('pointerdown', function(ev) {
+    pointerDown = true;
+    processPointer(ev);
+});
+canvas.addEventListener('pointerup', function (ev) {
+    pointerDown = false;
 });
 
-const gui = new dat.GUI({name: 'settings'});
-const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera( config.camera.fov, window.innerWidth / window.innerHeight, 0.001, 1000 );
+// const loader = new EXRLoader();
+// loader.load( 'data/starmap_2020_4k.exr', (t) => {
+//     t.mapping = THREE.EquirectangularReflectionMapping;
+//     scene.background = t;
+// });
 
 var bgColor = gui.addColor(config.bg, "backgroundColor");
 bgColor.onChange((v) => {
     scene.background.set(v);
 })
 gui.add(config, "daysPerSecond", 1, 365);
+gui.add(config, "soundVelocity", 0.01, 1, 0.01);
+gui.add(config.ux, "usabilityFactor", 0, 1);
 let cameraGUI = gui.addFolder("Camera");
-cameraGUI.add(config.camera, "y", 0, 100);
+cameraGUI.add(config.camera, "distance", 1, 40);
 cameraGUI.add(config.camera, "fov", 5, 110);
+cameraGUI.add(config.camera, "rotatingSpeed", 0.01, Math.PI * 2);
 let sunGUI = gui.addFolder("Sun");
 sunGUI.add(config.sun, "intensity", 0, 20);
 let scaleGUI = gui.addFolder("Scale")
@@ -89,9 +165,9 @@ scaleGUI.add(config, "realisticScale", 1, 65);
 let uxGUI = gui.addFolder("UX");
 uxGUI.add(config.ux, "cameraHeight", 3, 15);
 uxGUI.add(config.ux, "marginPercentage", 0, 0.9);
-uxGUI.add(config.ux, "usabilityFactor", 0, 1);
 uxGUI.add(config.ux, "doMousePluck");
-uxGUI.open();
+uxGUI.add(config.ux, "planetsVsSpaceFactor", 0, 1);
+uxGUI.add(config.ux, "sunSizeMultiplier", 1, 10);
 // let synthGUI = gui.addFolder("Synth");
 // synthGUI.add(config.synth, "attack", 0, 2);
 // synthGUI.add(config.synth, "decay", 0, 2);
@@ -103,6 +179,9 @@ pluckGUI.add(config.pluck, "attackNoise", 0.1, 1.5, 0.05);
 pluckGUI.add(config.pluck, "dampening", 0, 7000);
 pluckGUI.add(config.pluck, "resonance", 0, 1);
 pluckGUI.add(config.pluck, "release", 0.01, 10);
+let debugGUI = gui.addFolder("debug");
+debugGUI.add(config.debug, "mouseStatus");
+
 
 let needCheckResize = true;
 let safeWidth = 0;
@@ -137,7 +216,7 @@ scene.add( sun );
 scene.background = new THREE.Color(config.bg.backgroundColor);
 
 
-camera.position.z = 0;
+camera.position.z = config.camera.z;
 camera.position.y = config.camera.y;
 camera.lookAt(sun.position);
 
@@ -215,13 +294,11 @@ var strings = [];
 //     }
 // }
 
+// mouse viz and debug
 let mousePluck = new THREE.Object3D("mouse");
-// {
-//     const geometry = new THREE.BoxGeometry( 0.1, 0.1, 0.1 );
-//     const material = new THREE.MeshBasicMaterial( { color: 0x00ff00 } );
-//     mousePluck = new THREE.Mesh( geometry, material );
-//     scene.add( mousePluck );
-// }
+mousePluck.add(new THREE.Mesh( new THREE.BoxGeometry( 0.1, 0.1, 0.1 ), new THREE.MeshBasicMaterial( { color: 0x00ff00 } ) ));
+mousePluck.children[0].visible = config.debug.mouseStatus;
+scene.add( mousePluck );
 mousePluck.plucking = config.ux.doMousePluck;
 
 for (let i = 1; i < planets.length; ++i)
@@ -236,6 +313,10 @@ for (let i = 1; i < planets.length; ++i)
 }
 //
 
+let mouseRaycaster = new THREE.Raycaster();
+let mouseInteractionPlane = new THREE.Plane(new THREE.Vector3(0,1, 0), 0);
+let uxfCameraPosition = new THREE.Vector3();
+let uxfCameraQuaternion = new THREE.Quaternion();
 function animate() {
     checkWindowResize()
 
@@ -245,26 +326,32 @@ function animate() {
     accTimeMS += deltaTime;
     accTimeDays += deltaTime/1000 * config.daysPerSecond;
 
-    mousePluck.plucking = config.ux.doMousePluck;
-    mousePluck.position.set(mousePosition.x/safeWidth - 0.5, 0, mousePosition.y/safeHeight - 0.5);
-
     let uf = config.ux.usabilityFactor;
 
-    camera.position.y = THREE.MathUtils.lerp(config.camera.y, config.ux.cameraHeight, uf);
+    cameraDistancePivot.position.z = config.camera.distance;
+    uxfCameraPosition.set(0,config.ux.cameraHeight, uf);
+    cameraDistancePivot.getWorldPosition(camera.position);
+    camera.position.lerp(uxfCameraPosition, uf);
+    camera.quaternion.copy(cameraDistancePivot.quaternion);
+    camera.lookAt(sun.position);
+    uxfCameraQuaternion.copy(camera.quaternion);
+    camera.quaternion.slerpQuaternions(cameraDistancePivot.quaternion, uxfCameraQuaternion, uf);
+    //camera.lookAt(sun.position);
     camera.fov = config.camera.fov;
     camera.updateProjectionMatrix();
 
-    sunLight.intensity = config.sun.intensity;
+    mousePluck.plucking = config.ux.doMousePluck;
+    mousePluck.children[0].visible = config.debug.mouseStatus;
+    mouseRaycaster.setFromCamera(pointerNormalizedPosition, camera);
+    let mouseRes = mouseRaycaster.ray.intersectPlane(mouseInteractionPlane, mousePluck.position);
+    //mousePluck.position.set(mousePosition.x/windowWidth - 0.5, 0, mousePosition.y/windowHeight - 0.5);
 
-    let sunSize = lerp(sunRadius / AU, config.unifiedScale, config.unifiedScaleFactor);
-    let directSunScaledSize = config.realisticScale * sunRadius / AU;
-    sunSize = lerp(sunSize, directSunScaledSize, config.realisticScaleFactor);
-    sun.scale.set(sunSize,sunSize,sunSize);
+    sunLight.intensity = config.sun.intensity;
 
     let cameraHalfHeight = camera.position.y * Math.tan(config.camera.fov * 0.5 * THREE.MathUtils.DEG2RAD);
     let cameraHalfWidth = cameraHalfHeight * safeAR;
-    mousePluck.position.x *= cameraHalfWidth * 2;
-    mousePluck.position.z *= cameraHalfHeight * 2;
+    // mousePluck.position.x *= cameraHalfWidth * 2;
+    // mousePluck.position.z *= cameraHalfHeight * 2;
 
     let maxUxRadius = cameraHalfHeight;
     if (safeAR < 1) {
@@ -279,20 +366,40 @@ function animate() {
     }
     maxUxRadius -= maxUxRadius * config.ux.marginPercentage;
 
+    // compute UX friendly sizes (for mouse interaction)
+    let uxfSpaceForPlanets = maxUxRadius * config.ux.planetsVsSpaceFactor;
+    let uxfPlanetRadius = uxfSpaceForPlanets / (planets.length * 2 - 1 + 1 * config.ux.sunSizeMultiplier);
+    let uxfSunRadius = uxfPlanetRadius * config.ux.sunSizeMultiplier;
+    let uxfSpaceAmount = maxUxRadius - uxfSpaceForPlanets;
+    let uxfSpaceBetweenPlanets = uxfSpaceAmount / planets.length;
+    let uxfSpaceStart = uxfSunRadius + uxfSpaceBetweenPlanets + uxfPlanetRadius;
+    // let uxfSpaceEnd = maxUxRadius - uxfPlanetRadius;
+
+
+    // actually update sun and planets
+    let sunSize = lerp(sunRadius / AU, config.unifiedScale, config.unifiedScaleFactor);
+    let directSunScaledSize = config.realisticScale * sunRadius / AU;
+    sunSize = lerp(sunSize, directSunScaledSize, config.realisticScaleFactor);
+    sunSize = lerp(sunSize, uxfSunRadius, config.ux.usabilityFactor);
+    sun.scale.set(sunSize,sunSize,sunSize);
+
     for (let i = 0; i < planets.length; ++i) {
         let p = planets[i];
-        let uxRadius = (i + 1) * maxUxRadius / planets.length;
+        let uxfRadius = uxfSpaceStart + i * (uxfSpaceBetweenPlanets + uxfPlanetRadius * 2);//(i + 1) * maxUxRadius / planets.length;
         p.computeCoordinates(accTimeDays);
-        p.update(uxRadius, config.ux.usabilityFactor);
+        p.update(uxfRadius, config.ux.usabilityFactor);
         let size = lerp(p.radius / AU, config.unifiedScale, config.unifiedScaleFactor);
         let directScaledSize = config.realisticScale * p.radius / AU;
         size = lerp(size, directScaledSize, config.realisticScaleFactor);
+        size = lerp(size, uxfPlanetRadius, config.ux.usabilityFactor);
         p.mesh.scale.set(size,size,size);
     }
 
     strings.forEach((s) => {
         s.update(audioReady, accTimeMS, deltaTime);
-    });    
+    });
+
+    scene.update
 
     renderer.render( scene, camera );
 

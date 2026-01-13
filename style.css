@@ -18,10 +18,10 @@ body {
     height: 100%;
 
     display: flex;
-    align-items: center;
     text-align: left;
     flex-direction: column;
     touch-action:none;
+    pointer-events: none;
 
     -webkit-user-select: none; /* Safari */
     -ms-user-select: none; /* IE 10 and IE 11 */
