@@ -249,20 +249,34 @@ let accTimeDays = 0;
 // let synthCounter = 0;
 
 // Strings:
-var strings = [];
+let strings = [];
+let stringsMap = {};
+function registerString(i, j, string)
+{
+    if (hasString(i,j)) return;
 
-var interactables = [];
-// var white = new THREE.Color(0xffffff);
+    if (stringsMap[i] == null) stringsMap[i] = {};
+    if (stringsMap[j] == null) stringsMap[j] = {};
+    stringsMap[i][j] = stringsMap[j][i] = string;
+    strings.push(string);
+}
+function hasString(i, j)
+{
+    return (stringsMap[i] != null && stringsMap[i][j] != null)
+        || (stringsMap[j] != null && stringsMap[j][i] != null);
+}
+function removeString(i,j,string)
+{
+    strings.splice(strings.indexOf(string), 1);
+    stringsMap[i][j] = null;
+    stringsMap[j][i] = null;
+    string.dispose();
+}
+
+let interactables = [];
+let white = new THREE.Color(0xffffff);
 interactables.push(sun);
 planets.forEach((p) => interactables.push(p.mesh));
-// for (let i = 0; i < actors.length; ++i) {
-//     let p1 = actors[i];
-//     //if (i != 2) continue;
-//     for (let j = i + 1; j < actors.length; ++j)
-//     {
-//         strings.push(new stellarString(config, scene, actors[i], actors[j], i == 0? planets[j-1].color : white, actors));
-//     }
-// }
 
 // mouse viz and debug
 let mousePluck = new THREE.Object3D("mouse");
@@ -270,6 +284,12 @@ mousePluck.add(new THREE.Mesh( new THREE.BoxGeometry( 0.1, 0.1, 0.1 ), new THREE
 mousePluck.children[0].visible = config.debug.mouseStatus;
 scene.add( mousePluck );
 mousePluck.plucking = config.ux.doMousePluck;
+let allCares = [mousePluck, sun];
+sun.plucking = true;
+for (let i = 0; i < planets.length; ++i)
+{
+    allCares.push(planets[i].realObject);
+}
 
 for (let i = 1; i < planets.length; ++i)
 {
@@ -279,7 +299,7 @@ for (let i = 1; i < planets.length; ++i)
         planets[j].realObject.plucking = true;
     }
     let string = new stellarString(config, scene, sun, planets[i].realObject, planets[i].color, cares, sun, planets[i].mesh);
-    strings.push(string);
+    registerString(0, i+1, string);
 }
 //#region Pointer interaction
 let lastPointerPosition = new THREE.Vector2();
@@ -289,6 +309,7 @@ let pointerNormalizedPosition = new THREE.Vector2();
 let pointerDown = false;
 let pointerWasDown = false;
 let buildingString = false;
+let stringBeingBuild = null;
 function processPointer(ev) {
     lastPointerPosition.copy(pointerPosition);
     let rect = canvas.getBoundingClientRect();
@@ -313,7 +334,7 @@ function checkPointerInteraction() {
 
     let closestInteractable = -1;
     let combinedDistance = 1000000000;
-    let clickedInteractable = false;
+    let hasClickedInteractable = false;
     for (let i = 0; i < interactables.length; ++i)
     {
         let d = mouseRaycaster.ray.distanceSqToPoint(interactables[i].position);
@@ -328,22 +349,42 @@ function checkPointerInteraction() {
 
     if (combinedDistance < 0.001)
     {
-        clickedInteractable = true;
+        hasClickedInteractable = true;
     }
 
     if (buildingString)
     {
-        if (!clickedInteractable || lastClickedInteractable == closestInteractable) {
+        if (!hasClickedInteractable || lastClickedInteractable == closestInteractable) {
             buildingString = false;
             uxfAnimTime = 0;
             uxfAnimStart = config.ux.usabilityFactor;
-            console.log("cancelling string");
+            // console.log("cancelling string");
+            stringBeingBuild.dispose();
+            stringBeingBuild = null;
             lastClickedInteractable = -1;
         }
-        else if (clickedInteractable)
+        else if (hasClickedInteractable)
         {
-            console.log("making string between", lastClickedInteractable, closestInteractable);
-            // potentially remove string
+            if (hasString(lastClickedInteractable, closestInteractable))
+            {
+                removeString(lastClickedInteractable, closestInteractable, stringsMap[lastClickedInteractable][closestInteractable]);
+                // console.log("removing string between", lastClickedInteractable, closestInteractable);
+                stringBeingBuild.dispose();
+                stringBeingBuild = null;
+            }
+            else {
+                let i = closestInteractable;
+                let j = lastClickedInteractable;
+                let planetIReal = i == 0? sun : planets[i-1].realObject;
+                let planetIVisual = i == 0? sun : planets[i-1].mesh;
+                let planetJReal = j == 0? sun : planets[j-1].realObject;
+                let planetJVisual = j == 0? sun : planets[j-1].mesh;
+                // console.log("making string between", i, j);
+                let string = new stellarString(config, scene, planetIReal, planetJReal, white, allCares, planetIVisual, planetJVisual);
+                registerString(lastClickedInteractable, closestInteractable, string);
+                stringBeingBuild.dispose();
+                stringBeingBuild = null;
+            }
             buildingString = false;
             lastClickedInteractable = -1;
             uxfAnimTime = 0;
@@ -351,15 +392,19 @@ function checkPointerInteraction() {
         }
     }
     else {
-        if (clickedInteractable) {
+        if (hasClickedInteractable) {
             buildingString = true;
             uxfAnimTime = 0;
             uxfAnimStart = config.ux.usabilityFactor;
-            lastClickedInteractable = closestInteractable
+            lastClickedInteractable = closestInteractable;
+
+            stringBeingBuild = new stellarString(config, scene, interactables[lastClickedInteractable], mousePluck, white, []);
         }
     }
 }
 
+
+// TODO check ev.pointerType to improve UX on touch screens
 canvas.addEventListener('pointermove', function(ev) {
     processPointer(ev);
     if (pointerDown && !buildingString)
@@ -381,7 +426,7 @@ document.addEventListener('wheel', function(ev) {
 //#endregion
 
 let mouseRaycaster = new THREE.Raycaster();
-let mouseInteractionPlane = new THREE.Plane(new THREE.Vector3(0,1, 0), 0);
+let pointerInteractionPlane = new THREE.Plane(new THREE.Vector3(0,1, 0), 0);
 let uxfCameraPosition = new THREE.Vector3();
 let uxfCameraQuaternion = new THREE.Quaternion();
 function animate() {
@@ -398,7 +443,7 @@ function animate() {
         let t = uxfAnimTime / uxfAnimTotalTime;
         config.ux.usabilityFactor = THREE.MathUtils.lerp(uxfAnimStart, buildingString? 1 : 0, THREE.MathUtils.smootherstep(t, 0, 1));
         if (t >= 1) uxfAnimTime = -1;
-    }    
+    }
 
     let uf = config.ux.usabilityFactor;
 
@@ -413,11 +458,12 @@ function animate() {
     //camera.lookAt(sun.position);
     camera.fov = config.camera.fov;
     camera.updateProjectionMatrix();
+    camera.updateMatrixWorld();
 
     mousePluck.plucking = config.ux.doMousePluck;
     mousePluck.children[0].visible = config.debug.mouseStatus;
     mouseRaycaster.setFromCamera(pointerNormalizedPosition, camera);
-    let mouseRes = mouseRaycaster.ray.intersectPlane(mouseInteractionPlane, mousePluck.position);
+    let mouseRes = mouseRaycaster.ray.intersectPlane(pointerInteractionPlane, mousePluck.position);
     //mousePluck.position.set(mousePosition.x/windowWidth - 0.5, 0, mousePosition.y/windowHeight - 0.5);
 
     sunLight.intensity = config.sun.intensity;
@@ -469,6 +515,7 @@ function animate() {
         p.mesh.scale.set(size,size,size);
     }
 
+    if (stringBeingBuild != null) stringBeingBuild.update(audioReady, accTimeMS, deltaTime);
     strings.forEach((s) => {
         s.update(audioReady, accTimeMS, deltaTime);
     });

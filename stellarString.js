@@ -19,7 +19,7 @@ export default class stellarString
     constructor(config, scene, fromObject, toObject, color, planetsToCare, fromObjectVisual, toObjectVisual)
     {
         this.pluck = new Tone.PluckSynth(config.pluck).toDestination();
-
+        this.scene = scene;
         this.from = fromObject;
         this.to = toObject;
         this.config = config;
@@ -64,7 +64,7 @@ export default class stellarString
         let stringLength = this.deltaString.length();
         for (let i = 0; i < this.planetsToCare.length; ++i)
         {
-            if (this.planetsToCare[i] == this.from && this.planetsToCare[i] == this.to) continue;
+            if (this.planetsToCare[i] == this.from || this.planetsToCare[i] == this.to) continue;
             if (!this.planetsToCare[i].plucking) continue;
 
             this.deltaPlanet.copy(this.planetsToCare[i].position).sub(this.from.position);
@@ -94,5 +94,12 @@ export default class stellarString
             this.pluck.triggerAttackRelease(simulationFrequency);
             this.lastPluckedTime = now;
         }
+    }
+
+    dispose() {
+        this.scene.remove(this.line);
+        //this.line.dispose();
+        this.geometry.dispose();
+        this.material.dispose();
     }
 }
