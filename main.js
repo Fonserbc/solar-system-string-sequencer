@@ -61,7 +61,9 @@ let config = {
         mouseStatus: false,
     },
     strings: {
-        width: 0.02,
+        width: 0.04,
+        fragmentWidth: 0.2,
+        fadeOutTime: 2,
     }
 }
 
@@ -156,7 +158,11 @@ pluckGUI.add(config.pluck, "resonance", 0, 1);
 pluckGUI.add(config.pluck, "release", 0.01, 10);
 let debugGUI = gui.addFolder("debug");
 debugGUI.add(config.debug, "mouseStatus");
-debugGUI.add(config.strings, "width", 0, 0.2, 0.001);
+let stringGUI = gui.addFolder("strings");
+stringGUI.add(config.strings, "width", 0, 0.2, 0.001);
+stringGUI.add(config.strings, "fragmentWidth", 0, 0.5, 0.001);
+stringGUI.add(config.strings, "fadeOutTime", 0.1, 5, 0.01);
+stringGUI.open();
 
 
 let needCheckResize = true;

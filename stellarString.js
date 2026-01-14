@@ -1,6 +1,7 @@
 import * as THREE from 'three/webgpu';
 import * as Tone from 'tone';
 import { AU, c } from './constants';
+import {assign, Fn, greaterThan, If, mul, PI, sin, time, uv, vec4, float,add, abs, Discard, uniform, div, cos, any} from 'three/tsl';
 import { normalize } from 'three/src/math/MathUtils';
 
 export default class stellarString
@@ -68,13 +69,46 @@ export default class stellarString
             }
         }
         this.positionAttribute = new THREE.BufferAttribute(this.vertices, 3);
-        this.material = new THREE.MeshBasicMaterial({color: color});
+        this.material = new THREE.MeshBasicNodeMaterial({color: color});
         this.geometry = new THREE.BufferGeometry().setAttribute('position', this.positionAttribute);
         this.geometry.setIndex(new THREE.BufferAttribute(this.indices, 1));
         this.geometry.setAttribute('uv', new THREE.BufferAttribute(this.uv, 2));
         this.mesh = new THREE.Mesh(this.geometry, this.material);
         this.mesh.frustumCulled = false;
+        this.pluckingTime = 0;
         scene.add(this.mesh);
+
+        this.uniforms = {
+            frequency: uniform(440),
+            width: uniform(0.1),
+            intensity: uniform('float'),
+        };
+
+        const overtone = Fn(([xPi, tF, o]) => {
+            return sin(xPi.mul(o)).mul(sin(tF.mul(o))).div(o);
+        })
+
+        const main = Fn(() => {
+            const f = this.uniforms.frequency;
+            const v = uv();
+            const xPi = v.x.mul(PI);
+            const tf = time.mul(f);
+            const xS = float(0).toVar();
+            If(this.uniforms.intensity.greaterThan(0), () => {
+                xS.assign(sin(xPi).mul(sin(tf)).add(overtone(xPi, tf, 2)).add(overtone(xPi, tf, 3)).add(overtone(xPi, tf, 4)).add(overtone(xPi, tf, 5)));
+                xS.assign(xS.mul(this.uniforms.intensity));
+            });
+            const result = vec4(1,1,1,1).toVar();
+            const y = v.y.sub(0.5).mul(this.uniforms.width.add(2+1));
+            
+            const distance = abs(y.sub(xS));
+            If(distance.greaterThan(this.uniforms.width), () => {
+                Discard();
+            });
+            return result;
+        });
+
+        this.material.fragmentNode = main();
 
         this.planetsCrossProducts = [];
         this.deltaString = this.to.position.clone().sub(this.from.position);
@@ -96,6 +130,14 @@ export default class stellarString
 
     update(audioReady, time, deltaTime, transformationFuction, camera)
     {
+        this.uniforms.width.value = this.config.strings.fragmentWidth;
+
+        if (this.pluckingTime > 0)
+        {
+            this.pluckingTime -= deltaTime/1000;
+            if (this.pluckingTime <= 0) this.pluckingTime = 0;
+            this.uniforms.intensity.value = this.pluckingTime/this.config.strings.fadeOutTime;
+        }
         let stringUp = this.stringUp;
         let v = this.deltaString;
         let cameraFwd = this.deltaPlanet;
@@ -147,6 +189,8 @@ export default class stellarString
             //console.log("plucked by", planet.name, simulationFrequency)
             this.pluck.triggerAttackRelease(simulationFrequency);
             this.lastPluckedTime = now;
+            this.pluckingTime = this.config.strings.fadeOutTime;
+            this.uniforms.frequency.value = simulationFrequency;
         }
     }
 
