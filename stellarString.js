@@ -1,6 +1,7 @@
 import * as THREE from 'three/webgpu';
 import * as Tone from 'tone';
 import { AU, c } from './constants';
+import { normalize } from 'three/src/math/MathUtils';
 
 export default class stellarString
 {
@@ -29,21 +30,51 @@ export default class stellarString
         this.lastPluckedTime = Tone.now();
         //console.log(this.from, this.to, planetsToCare);
 
-        let pointCount = 128;
+        let pointCount = this.pointCount = 128;
         this.points = new Float32Array(pointCount*3);
+        this.vertices = new Float32Array(pointCount*2*3);
+        this.indices = new Int32Array((pointCount-1)*2*3);
+        this.uv = new Float32Array(pointCount*2*2);
         let v = new THREE.Vector3();
-        for (let i = 0; i < this.points.length; i += 3) {
-            v.lerpVectors(this.fromVisual.position, this.toVisual.position, (i/3)/(pointCount-1));
-            this.points[i] = v.x;
-            this.points[i+1] = v.y;
-            this.points[i+2] = v.z;
+        let stringUp = this.stringUp = this.to.position.clone().sub(this.from.position).normalize();
+        let aux = stringUp.z;
+        stringUp.z = -stringUp.x;
+        stringUp.x = aux;
+        stringUp.multiplyScalar(config.strings.width);
+        for (let i = 0; i < pointCount; i++) {
+            let f = i/(pointCount-1);
+            v.lerpVectors(this.fromVisual.position, this.toVisual.position, f);
+            this.points[i*3] = v.x;
+            this.points[i*3+1] = v.y;
+            this.points[i*3+2] = v.z;
+            this.vertices[i*6+0] = v.x + stringUp.x;
+            this.vertices[i*6+1] = v.y + stringUp.y;
+            this.vertices[i*6+2] = v.z + stringUp.z;
+            this.vertices[i*6+3] = v.x - stringUp.x;
+            this.vertices[i*6+4] = v.y - stringUp.y;
+            this.vertices[i*6+5] = v.z - stringUp.z;
+            this.uv[i*4] = f;
+            this.uv[i*4+1] = 0;
+            this.uv[i*4+2] = f;
+            this.uv[i*4+3] = 1;
+            if (i < pointCount - 1)
+            {
+                this.indices[i*6+0] = i*2+0;
+                this.indices[i*6+1] = i*2+1;
+                this.indices[i*6+2] = i*2+2;
+                this.indices[i*6+3] = i*2+2;
+                this.indices[i*6+4] = i*2+1;
+                this.indices[i*6+5] = i*2+3;
+            }
         }
-        this.positionAttribute = new THREE.BufferAttribute(this.points, 3);
-        this.material = new THREE.LineBasicMaterial({color: color});
+        this.positionAttribute = new THREE.BufferAttribute(this.vertices, 3);
+        this.material = new THREE.MeshBasicMaterial({color: color});
         this.geometry = new THREE.BufferGeometry().setAttribute('position', this.positionAttribute);
-        this.line = new THREE.Line(this.geometry, this.material);
-        this.line.frustumCulled = false;
-        scene.add(this.line);
+        this.geometry.setIndex(new THREE.BufferAttribute(this.indices, 1));
+        this.geometry.setAttribute('uv', new THREE.BufferAttribute(this.uv, 2));
+        this.mesh = new THREE.Mesh(this.geometry, this.material);
+        this.mesh.frustumCulled = false;
+        scene.add(this.mesh);
 
         this.planetsCrossProducts = [];
         this.deltaString = this.to.position.clone().sub(this.from.position);
@@ -63,13 +94,22 @@ export default class stellarString
         }
     }
 
-    update(audioReady, time, deltaTime, transformationFuction)
+    update(audioReady, time, deltaTime, transformationFuction, camera)
     {
+        let stringUp = this.stringUp;
         let v = this.deltaString;
-        for (let i = 0; i < this.positionAttribute.count; ++i) {
-            v.lerpVectors(this.from.position, this.to.position, i/(this.positionAttribute.count-1));
+        let cameraFwd = this.deltaPlanet;
+        cameraFwd.set(0,0,-1).applyQuaternion(camera.quaternion);
+
+        this.deltaString.copy(this.to.position).sub(this.from.position).normalize();
+        stringUp.crossVectors(this.deltaString, cameraFwd).normalize().multiplyScalar(this.config.strings.width);
+
+        for (let i = 0; i < this.positionAttribute.count; i+=2) {
+            v.lerpVectors(this.from.position, this.to.position, (i/2)/(this.pointCount-1));
             transformationFuction(v);
-            this.positionAttribute.setXYZ(i, v.x, v.y, v.z);
+
+            this.positionAttribute.setXYZ(i, v.x + stringUp.x, v.y + stringUp.y, v.z + stringUp.z);
+            this.positionAttribute.setXYZ(i+1, v.x - stringUp.x, v.y - stringUp.y, v.z - stringUp.z);
         }
         this.positionAttribute.needsUpdate = true;
         let pluckedThisFrame = false;
@@ -111,8 +151,7 @@ export default class stellarString
     }
 
     dispose() {
-        this.scene.remove(this.line);
-        //this.line.dispose();
+        this.scene.remove(this.mesh);
         this.geometry.dispose();
         this.material.dispose();
     }

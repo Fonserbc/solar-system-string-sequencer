@@ -18,7 +18,7 @@ import Stats from 'stats.js';
 
 let config = {
     daysPerSecond: 12, // 28
-    soundVelocity: 0.75, // as a percentage of the speed of light, 1 = c
+    soundVelocity: 1, // as a percentage of the speed of light, 1 = c
     unifiedScaleFactor: 0.15,
     realisticScaleFactor: 0.94,
     unifiedScale: 8,
@@ -60,6 +60,9 @@ let config = {
     debug: {
         mouseStatus: false,
     },
+    strings: {
+        width: 0.02,
+    }
 }
 
 let audioReady = false;
@@ -153,6 +156,7 @@ pluckGUI.add(config.pluck, "resonance", 0, 1);
 pluckGUI.add(config.pluck, "release", 0.01, 10);
 let debugGUI = gui.addFolder("debug");
 debugGUI.add(config.debug, "mouseStatus");
+debugGUI.add(config.strings, "width", 0, 0.2, 0.001);
 
 
 let needCheckResize = true;
@@ -481,6 +485,8 @@ function deformPositionBasedOnPlanets(pos)
 let stats = new Stats();
 stats.showPanel(1);
 document.body.appendChild(stats.dom);
+stats.dom.style.top = "";
+stats.dom.style.bottom = "0px";
 
 let mouseRaycaster = new THREE.Raycaster();
 let pointerInteractionPlane = new THREE.Plane(new THREE.Vector3(0,1, 0), 0);
@@ -577,10 +583,10 @@ function animate() {
     }
 
     if (stringBeingBuild != null) {
-        stringBeingBuild.update(audioReady, accTimeMS, deltaTime, (v) => v);
+        stringBeingBuild.update(audioReady, accTimeMS, deltaTime, (v) => v, camera);
     }
     strings.forEach((s) => {
-        s.update(audioReady, accTimeMS, deltaTime, deformPositionBasedOnPlanets);
+        s.update(audioReady, accTimeMS, deltaTime, deformPositionBasedOnPlanets, camera);
     });
 
     renderer.render( scene, camera );
