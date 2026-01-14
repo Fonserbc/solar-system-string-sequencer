@@ -7,6 +7,7 @@ import * as dat from 'dat.gui';
 import * as Tone from 'tone';
 import stellarString from './stellarString';
 import starfield from './starfield';
+import Stats from 'stats.js';
 
 // Solar system harp
 // Stelar harp
@@ -86,6 +87,8 @@ const VECTOR3 = {
 
 let camMovementQuat = new THREE.Quaternion();
 let camMovementVec = new THREE.Vector3();
+let hasMovedCamera = false;
+let wasBuildingString = false;
 function moveCamera(ev) {
     let x = deltaPointerPosition.x*config.camera.rotatingSpeed/windowHeight;
     let y = deltaPointerPosition.y*config.camera.rotatingSpeed/windowHeight;
@@ -96,6 +99,7 @@ function moveCamera(ev) {
     camMovementQuat.setFromAxisAngle(camMovementVec, y);
     cameraRotatingPivot.quaternion.multiply(camMovementQuat);
     cameraDistancePivot.quaternion.copy(cameraRotatingPivot.quaternion);
+    hasMovedCamera = true;
 }
 
 canvas.addEventListener("pointerdown", async () => {
@@ -117,7 +121,7 @@ bgColor.onChange((v) => {
 })
 gui.add(config, "daysPerSecond", 1, 365);
 gui.add(config, "soundVelocity", 0.01, 1, 0.01);
-gui.add(config.ux, "usabilityFactor", 0, 1);
+//gui.add(config.ux, "usabilityFactor", 0, 1);
 let cameraGUI = gui.addFolder("Camera");
 cameraGUI.add(config.camera, "distance", 1, 40);
 cameraGUI.add(config.camera, "fov", 5, 110);
@@ -276,7 +280,10 @@ function removeString(i,j,string)
 let interactables = [];
 let white = new THREE.Color(0xffffff);
 interactables.push(sun);
-planets.forEach((p) => interactables.push(p.mesh));
+planets.forEach((p) => {
+    interactables.push(p.mesh);
+    p.realObject.plucking = true;
+});
 
 // mouse viz and debug
 let mousePluck = new THREE.Object3D("mouse");
@@ -291,16 +298,16 @@ for (let i = 0; i < planets.length; ++i)
     allCares.push(planets[i].realObject);
 }
 
-for (let i = 1; i < planets.length; ++i)
-{
-    let cares = [mousePluck];
-    for (let j = i-1; j >= 0; --j) {
-        cares.push(planets[j].realObject);
-        planets[j].realObject.plucking = true;
-    }
-    let string = new stellarString(config, scene, sun, planets[i].realObject, planets[i].color, cares, sun, planets[i].mesh);
-    registerString(0, i+1, string);
-}
+// for (let i = 1; i < planets.length; ++i)
+// {
+//     let cares = [mousePluck];
+//     for (let j = i-1; j >= 0; --j) {
+//         cares.push(planets[j].realObject);
+//         planets[j].realObject.plucking = true;
+//     }
+//     let string = new stellarString(config, scene, sun, planets[i].realObject, planets[i].color, cares, sun, planets[i].mesh);
+//     registerString(0, i+1, string);
+// }
 //#region Pointer interaction
 let lastPointerPosition = new THREE.Vector2();
 let pointerPosition = new THREE.Vector2();
@@ -327,6 +334,13 @@ function processPointer(ev) {
 let lastClickedInteractable = -1;
 let uxfAnimTime = 0;
 let uxfAnimStart = 0;
+let uxfWannabe = 0;
+
+function setUxFriendly(friendly) {
+    uxfAnimTime = 0;
+    uxfAnimStart = config.ux.usabilityFactor;
+    uxfWannabe = friendly? 1 : 0;
+}
 const uxfAnimTotalTime = 1;
 function checkPointerInteraction() {
     
@@ -352,13 +366,11 @@ function checkPointerInteraction() {
         hasClickedInteractable = true;
     }
 
-    if (buildingString)
+    if (buildingString && pointerDown)
     {
         if (!hasClickedInteractable || lastClickedInteractable == closestInteractable) {
             buildingString = false;
-            uxfAnimTime = 0;
-            uxfAnimStart = config.ux.usabilityFactor;
-            // console.log("cancelling string");
+            console.log("cancelling string");
             stringBeingBuild.dispose();
             stringBeingBuild = null;
             lastClickedInteractable = -1;
@@ -368,7 +380,7 @@ function checkPointerInteraction() {
             if (hasString(lastClickedInteractable, closestInteractable))
             {
                 removeString(lastClickedInteractable, closestInteractable, stringsMap[lastClickedInteractable][closestInteractable]);
-                // console.log("removing string between", lastClickedInteractable, closestInteractable);
+                console.log("removing string between", lastClickedInteractable, closestInteractable);
                 stringBeingBuild.dispose();
                 stringBeingBuild = null;
             }
@@ -379,7 +391,7 @@ function checkPointerInteraction() {
                 let planetIVisual = i == 0? sun : planets[i-1].mesh;
                 let planetJReal = j == 0? sun : planets[j-1].realObject;
                 let planetJVisual = j == 0? sun : planets[j-1].mesh;
-                // console.log("making string between", i, j);
+                console.log("making string between", i, j);
                 let string = new stellarString(config, scene, planetIReal, planetJReal, white, allCares, planetIVisual, planetJVisual);
                 registerString(lastClickedInteractable, closestInteractable, string);
                 stringBeingBuild.dispose();
@@ -387,18 +399,23 @@ function checkPointerInteraction() {
             }
             buildingString = false;
             lastClickedInteractable = -1;
-            uxfAnimTime = 0;
-            uxfAnimStart = config.ux.usabilityFactor;
         }
     }
     else {
-        if (hasClickedInteractable) {
+        if (hasClickedInteractable && pointerDown) {
             buildingString = true;
+            wasBuildingString = true;
             uxfAnimTime = 0;
             uxfAnimStart = config.ux.usabilityFactor;
             lastClickedInteractable = closestInteractable;
 
             stringBeingBuild = new stellarString(config, scene, interactables[lastClickedInteractable], mousePluck, white, []);
+            if (uxfWannabe != 1) {
+                setUxFriendly(true);
+            }
+        }
+        else if (!hasMovedCamera && !wasBuildingString && !pointerDown && !hasClickedInteractable) {
+            setUxFriendly(uxfWannabe == 0? true : false);
         }
     }
 }
@@ -419,17 +436,58 @@ canvas.addEventListener('pointerdown', function(ev) {
 });
 canvas.addEventListener('pointerup', function (ev) {
     pointerDown = false;
+    processPointer(ev);
+    checkPointerInteraction();
+    hasMovedCamera = false;
+    wasBuildingString = buildingString;
 });
 document.addEventListener('wheel', function(ev) {
     config.camera.distance = THREE.MathUtils.clamp(config.camera.distance + ev.deltaY * config.camera.scrollSpeed, 2, 100);
 });
 //#endregion
 
+function deformPositionBasedOnPlanets(pos)
+{
+    let realDistanceFromSun = pos.length();
+    let j = -1;
+    for (let i = 0; i < planets.length; ++i) {
+        let p = planets[i];
+        if (realDistanceFromSun <= p.realDistanceFromSun)
+        {
+            j = i;
+            break;
+        }
+    }
+    if (j == -1) { // farther than furthest plannet
+        let prev = planets[planets.length - 1];
+        let furtherAmount = realDistanceFromSun - prev.realDistanceFromSun;
+        pos.normalize().multiplyScalar(prev.visualDistanceFromSun + furtherAmount);
+    }
+    else if (j == 0) { // betrween sun and mercury
+        let next = planets[j];
+        let f = realDistanceFromSun / next.realDistanceFromSun;
+        pos.normalize().multiplyScalar(f * next.visualDistanceFromSun);
+    }
+    else {
+        let prev = planets[j - 1];
+        let next = planets[j];
+        let f = (realDistanceFromSun - prev.realDistanceFromSun) / (next.realDistanceFromSun - prev.realDistanceFromSun);
+        
+        let visualDistanceBetweenOrbits = next.visualDistanceFromSun - prev.visualDistanceFromSun;
+        pos.normalize().multiplyScalar(prev.visualDistanceFromSun + f * visualDistanceBetweenOrbits);
+    }
+}
+
+let stats = new Stats();
+stats.showPanel(1);
+document.body.appendChild(stats.dom);
+
 let mouseRaycaster = new THREE.Raycaster();
 let pointerInteractionPlane = new THREE.Plane(new THREE.Vector3(0,1, 0), 0);
 let uxfCameraPosition = new THREE.Vector3();
 let uxfCameraQuaternion = new THREE.Quaternion();
 function animate() {
+    stats.begin();
     checkWindowResize()
 
     let currentTimeMS = Date.now();
@@ -441,7 +499,7 @@ function animate() {
     if (uxfAnimTime >= 0) {
         uxfAnimTime += deltaTime/1000;
         let t = uxfAnimTime / uxfAnimTotalTime;
-        config.ux.usabilityFactor = THREE.MathUtils.lerp(uxfAnimStart, buildingString? 1 : 0, THREE.MathUtils.smootherstep(t, 0, 1));
+        config.ux.usabilityFactor = THREE.MathUtils.lerp(uxfAnimStart, uxfWannabe, THREE.MathUtils.smootherstep(t, 0, 1));
         if (t >= 1) uxfAnimTime = -1;
     }
 
@@ -464,6 +522,9 @@ function animate() {
     mousePluck.children[0].visible = config.debug.mouseStatus;
     mouseRaycaster.setFromCamera(pointerNormalizedPosition, camera);
     let mouseRes = mouseRaycaster.ray.intersectPlane(pointerInteractionPlane, mousePluck.position);
+    // if (mouseRes == null) {
+    //     console.error("didn't intersect with plane!");
+    // }
     //mousePluck.position.set(mousePosition.x/windowWidth - 0.5, 0, mousePosition.y/windowHeight - 0.5);
 
     sunLight.intensity = config.sun.intensity;
@@ -515,12 +576,12 @@ function animate() {
         p.mesh.scale.set(size,size,size);
     }
 
-    if (stringBeingBuild != null) stringBeingBuild.update(audioReady, accTimeMS, deltaTime);
+    if (stringBeingBuild != null) {
+        stringBeingBuild.update(audioReady, accTimeMS, deltaTime, (v) => v);
+    }
     strings.forEach((s) => {
-        s.update(audioReady, accTimeMS, deltaTime);
+        s.update(audioReady, accTimeMS, deltaTime, deformPositionBasedOnPlanets);
     });
-
-    scene.update
 
     renderer.render( scene, camera );
 
@@ -555,5 +616,7 @@ function animate() {
         //     if (synthCountdown < 0) synthCountdown = period;
         // }
     }
+    
+    stats.end();
 }
 renderer.setAnimationLoop( animate );

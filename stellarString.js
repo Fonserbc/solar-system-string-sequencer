@@ -29,11 +29,20 @@ export default class stellarString
         this.lastPluckedTime = Tone.now();
         //console.log(this.from, this.to, planetsToCare);
 
-        this.points = [];
-        this.points.push(this.fromVisual.position.clone(), this.toVisual.position.clone());
+        let pointCount = 128;
+        this.points = new Float32Array(pointCount*3);
+        let v = new THREE.Vector3();
+        for (let i = 0; i < this.points.length; i += 3) {
+            v.lerpVectors(this.fromVisual.position, this.toVisual.position, (i/3)/(pointCount-1));
+            this.points[i] = v.x;
+            this.points[i+1] = v.y;
+            this.points[i+2] = v.z;
+        }
+        this.positionAttribute = new THREE.BufferAttribute(this.points, 3);
         this.material = new THREE.LineBasicMaterial({color: color});
-        this.geometry = new THREE.BufferGeometry().setFromPoints(this.points);
+        this.geometry = new THREE.BufferGeometry().setAttribute('position', this.positionAttribute);
         this.line = new THREE.Line(this.geometry, this.material);
+        this.line.frustumCulled = false;
         scene.add(this.line);
 
         this.planetsCrossProducts = [];
@@ -54,10 +63,15 @@ export default class stellarString
         }
     }
 
-    update(audioReady, time, deltaTime) {
-        this.points[0].copy(this.fromVisual.position);
-        this.points[1].copy(this.toVisual.position);
-        this.geometry.setFromPoints(this.points);
+    update(audioReady, time, deltaTime, transformationFuction)
+    {
+        let v = this.deltaString;
+        for (let i = 0; i < this.positionAttribute.count; ++i) {
+            v.lerpVectors(this.from.position, this.to.position, i/(this.positionAttribute.count-1));
+            transformationFuction(v);
+            this.positionAttribute.setXYZ(i, v.x, v.y, v.z);
+        }
+        this.positionAttribute.needsUpdate = true;
         let pluckedThisFrame = false;
 
         this.deltaString.copy(this.to.position).sub(this.from.position);

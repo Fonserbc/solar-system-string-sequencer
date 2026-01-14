@@ -36,6 +36,9 @@ export default class planet
 
         let size = radius / AU;
         this.mesh.scale.set(size,size,size);
+
+        this.realDistanceFromSun = 1;
+        this.visualDistanceFromSun = 1;
         //console.log(this);
         scene.add(this.mesh);
     }
@@ -115,9 +118,11 @@ export default class planet
     {
         if (uxFactor > 0) {
             //let distanceFromSun = this.computedPosition.length();
+            this.realDistanceFromSun = this.computedPosition.length();
+            this.visualDistanceFromSun = MathUtils.lerp(this.realDistanceFromSun, uxDistanceFromSun, uxFactor);
+
             this.meshPosition.copy(this.computedPosition).normalize().multiplyScalar(uxDistanceFromSun);
             this.mesh.position.lerpVectors(this.computedPosition, this.meshPosition, uxFactor);
-            //console.log(this.name, uxDistanceFromSun, this.computedPosition, this.meshPosition);
         }
         else {
             this.mesh.position.copy(this.computedPosition);
