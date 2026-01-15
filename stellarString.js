@@ -41,7 +41,7 @@ export default class stellarString
         let aux = stringUp.z;
         stringUp.z = -stringUp.x;
         stringUp.x = aux;
-        stringUp.multiplyScalar(config.strings.width);
+        stringUp.multiplyScalar(config.strings.stringWidth);
         for (let i = 0; i < pointCount; i++) {
             let f = i/(pointCount-1);
             v.lerpVectors(this.fromVisual.position, this.toVisual.position, f);
@@ -136,7 +136,7 @@ export default class stellarString
         {
             this.pluckingTime -= deltaTime/1000;
             if (this.pluckingTime <= 0) this.pluckingTime = 0;
-            this.uniforms.intensity.value = this.pluckingTime/this.config.strings.fadeOutTime;
+            this.uniforms.intensity.value = this.pluckingTime/this.pluckingFadeoutTime;
         }
         let stringUp = this.stringUp;
         let v = this.deltaString;
@@ -144,7 +144,7 @@ export default class stellarString
         cameraFwd.set(0,0,-1).applyQuaternion(camera.quaternion);
 
         this.deltaString.copy(this.to.position).sub(this.from.position).normalize();
-        stringUp.crossVectors(this.deltaString, cameraFwd).normalize().multiplyScalar(this.config.strings.width);
+        stringUp.crossVectors(this.deltaString, cameraFwd).normalize().multiplyScalar(this.config.strings.stringWidth);
 
         for (let i = 0; i < this.positionAttribute.count; i+=2) {
             v.lerpVectors(this.from.position, this.to.position, (i/2)/(this.pointCount-1));
@@ -187,9 +187,11 @@ export default class stellarString
         let now = Tone.now();
         if (now > this.lastPluckedTime && simulationFrequency < 20000 && simulationFrequency > 15) {
             //console.log("plucked by", planet.name, simulationFrequency)
-            this.pluck.triggerAttackRelease(simulationFrequency);
+            this.pluck.triggerAttack(simulationFrequency);
             this.lastPluckedTime = now;
-            this.pluckingTime = this.config.strings.fadeOutTime;
+            let l = Math.pow(simulationFrequency / this.config.strings.fadeOutTimeFrequency, 0.33333333);
+            this.pluckingTime = this.config.strings.fadeOutTime / l;
+            this.pluckingFadeoutTime = this.pluckingTime;
             this.uniforms.frequency.value = simulationFrequency;
         }
     }

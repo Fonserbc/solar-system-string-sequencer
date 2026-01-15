@@ -62,8 +62,10 @@ let config = {
     },
     strings: {
         width: 0.04,
+        stringWidth: 0.04,
         fragmentWidth: 0.2,
         fadeOutTime: 2,
+        fadeOutTimeFrequency: 220,
     }
 }
 
@@ -162,6 +164,7 @@ let stringGUI = gui.addFolder("strings");
 stringGUI.add(config.strings, "width", 0, 0.2, 0.001);
 stringGUI.add(config.strings, "fragmentWidth", 0, 0.5, 0.001);
 stringGUI.add(config.strings, "fadeOutTime", 0.1, 5, 0.01);
+stringGUI.add(config.strings, "fadeOutTimeFrequency", 50, 10000, 1);
 stringGUI.open();
 
 
@@ -529,6 +532,9 @@ function animate() {
     camera.fov = config.camera.fov;
     camera.updateProjectionMatrix();
     camera.updateMatrixWorld();
+
+    let cameraDistanceFactor = Math.max(1, camera.position.length()/config.ux.cameraHeight);
+    config.strings.stringWidth = config.strings.width * cameraDistanceFactor;
 
     mousePluck.plucking = config.ux.doMousePluck;
     mousePluck.children[0].visible = config.debug.mouseStatus;
