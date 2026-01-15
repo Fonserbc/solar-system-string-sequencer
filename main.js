@@ -28,7 +28,7 @@ let config = {
         distance: 7,
         startingAngle: 30,
         rotatingSpeed: Math.PI,
-        scrollSpeed: 0.01,
+        scrollSpeed: 0.005,
     },
     sun: {
         intensity:12,
@@ -43,6 +43,7 @@ let config = {
         doMousePluck: false,
         planetsVsSpaceFactor: 0.5,
         sunSizeMultiplier: 3,
+        cameraAnimationTotalTime: 0.7,
     },
     synth: {
         attack: 0.12,
@@ -66,23 +67,15 @@ let config = {
         fragmentWidth: 0.2,
         fadeOutTime: 2,
         fadeOutTimeFrequency: 220,
+        coloredEdge: 0.12,
+        coloredEdgeStart: 0.12,
+        stringColor: "#898989",
     }
 }
 
 let audioReady = false;
 const canvas = document.getElementById("canvas");
 const safearea = document.getElementById("safe-area");
-
-const gui = new dat.GUI({name: 'settings'});
-const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera( config.camera.fov, window.innerWidth / window.innerHeight, 0.001, 1024 );
-const cameraRotatingPivot = new THREE.Object3D();
-const cameraDistancePivot = new THREE.Object3D();
-cameraRotatingPivot.add(cameraDistancePivot);
-cameraDistancePivot.position.z = config.camera.distance;
-cameraRotatingPivot.setRotationFromAxisAngle(new THREE.Vector3(-1,0,0), 15 * THREE.MathUtils.DEG2RAD);
-cameraDistancePivot.quaternion.copy(cameraRotatingPivot.quaternion);
-scene.add(cameraRotatingPivot);
 
 const VECTOR3 = {
     UP: new THREE.Vector3(0,1,0),
@@ -92,20 +85,60 @@ const VECTOR3 = {
     FORWARD: new THREE.Vector3(0,0,1),
 }
 
+const gui = new dat.GUI({name: 'settings'});
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera( config.camera.fov, window.innerWidth / window.innerHeight, 0.001, 1024 );
+const cameraRotatingPivot = new THREE.Object3D();
+const cameraDistancePivot = new THREE.Object3D();
+let camUxfQuat = new THREE.Quaternion().identity();
+let cameraAngles = new THREE.Vector2(15 * THREE.MathUtils.DEG2RAD, 0);
+cameraRotatingPivot.add(cameraDistancePivot);
+cameraDistancePivot.position.z = config.camera.distance;
+cameraRotatingPivot.setRotationFromAxisAngle(VECTOR3.RIGHT, cameraAngles.x);
+cameraDistancePivot.quaternion.copy(cameraRotatingPivot.quaternion);
+camUxfQuat.setFromAxisAngle(VECTOR3.RIGHT, Math.PI*0.5);
+scene.add(cameraRotatingPivot);
+
+
 let camMovementQuat = new THREE.Quaternion();
 let camMovementVec = new THREE.Vector3();
+let camUxfPos = new THREE.Vector3(0,config.ux.cameraHeight,0);
 let hasMovedCamera = false;
 let wasBuildingString = false;
+const maxXCameraAngle = Math.PI*0.45;
 function moveCamera(ev) {
     let x = deltaPointerPosition.x*config.camera.rotatingSpeed/windowHeight;
     let y = deltaPointerPosition.y*config.camera.rotatingSpeed/windowHeight;
-    camMovementVec.copy(VECTOR3.DOWN);//.applyQuaternion(cameraRotatingPivot.quaternion);
-    camMovementQuat.setFromAxisAngle(camMovementVec, x);
-    cameraRotatingPivot.quaternion.multiply(camMovementQuat);
-    camMovementVec.copy(VECTOR3.RIGHT);//.applyQuaternion(cameraRotatingPivot.quaternion);
-    camMovementQuat.setFromAxisAngle(camMovementVec, y);
+    cameraAngles.x += y;
+    cameraAngles.x = THREE.MathUtils.clamp(cameraAngles.x + y, -maxXCameraAngle, maxXCameraAngle);
+    cameraAngles.y -= x;
+
+    cameraRotatingPivot.quaternion.setFromAxisAngle(VECTOR3.UP, cameraAngles.y);
+    camUxfQuat.copy(cameraRotatingPivot.quaternion);
+    camMovementQuat.setFromAxisAngle(VECTOR3.RIGHT, cameraAngles.x);
     cameraRotatingPivot.quaternion.multiply(camMovementQuat);
     cameraDistancePivot.quaternion.copy(cameraRotatingPivot.quaternion);
+
+    let up = cameraAngles.x > 0;
+    if (up || true) {
+        camMovementQuat.setFromAxisAngle(VECTOR3.RIGHT, Math.PI * 0.5);
+        camUxfQuat.multiply(camMovementQuat);
+        camUxfPos.y = config.ux.cameraHeight;
+    }
+    else { // For some reason the quaternion slerp is misbehaving when under the solar system plane
+        camMovementQuat.setFromAxisAngle(VECTOR3.RIGHT, -Math.PI * 0.5);
+        camUxfQuat.multiply(camMovementQuat);
+        camUxfPos.y = -config.ux.cameraHeight;
+    }
+
+
+    // camMovementVec.copy(VECTOR3.DOWN);//.applyQuaternion(cameraRotatingPivot.quaternion);
+    // camMovementQuat.setFromAxisAngle(camMovementVec, x);
+    // cameraRotatingPivot.quaternion.multiply(camMovementQuat);
+    // camMovementVec.copy(VECTOR3.RIGHT);//.applyQuaternion(cameraRotatingPivot.quaternion);
+    // camMovementQuat.setFromAxisAngle(camMovementVec, y);
+    // cameraRotatingPivot.quaternion.multiply(camMovementQuat);
+    // cameraDistancePivot.quaternion.copy(cameraRotatingPivot.quaternion);
     hasMovedCamera = true;
 }
 
@@ -133,7 +166,7 @@ let cameraGUI = gui.addFolder("Camera");
 cameraGUI.add(config.camera, "distance", 1, 40);
 cameraGUI.add(config.camera, "fov", 5, 110);
 cameraGUI.add(config.camera, "rotatingSpeed", 0.01, Math.PI * 2);
-cameraGUI.add(config.camera, "scrollSpeed", 0, 10, 0.01);
+cameraGUI.add(config.camera, "scrollSpeed", 0, 1, 0.001);
 let sunGUI = gui.addFolder("Sun");
 sunGUI.add(config.sun, "intensity", 0, 20);
 let scaleGUI = gui.addFolder("Scale")
@@ -165,7 +198,11 @@ stringGUI.add(config.strings, "width", 0, 0.2, 0.001);
 stringGUI.add(config.strings, "fragmentWidth", 0, 0.5, 0.001);
 stringGUI.add(config.strings, "fadeOutTime", 0.1, 5, 0.01);
 stringGUI.add(config.strings, "fadeOutTimeFrequency", 50, 10000, 1);
+stringGUI.add(config.strings, "coloredEdge", 0, 3, 0.01);
+stringGUI.add(config.strings, "coloredEdgeStart", 0, 3, 0.01);
+stringGUI.addColor(config.strings, "stringColor");
 stringGUI.open();
+gui.close();
 
 
 let needCheckResize = true;
@@ -196,11 +233,54 @@ document.body.appendChild( renderer.domElement );
 const starField = new starfield(config, scene);
 
 const sun = new THREE.Mesh( new THREE.SphereGeometry( 1, 32), new THREE.MeshBasicMaterial( { color: 0xffffdd } ));
+sun.color = 0xffffdd;
 const sunRadius = 696340;
 const sunLight = new THREE.PointLight(0xfffffe, config.sun.intensity, 0, 0);
 sun.add(sunLight);
 scene.add( sun );
 scene.background = new THREE.Color(config.bg.backgroundColor);
+
+let selectedPlanetName = "sun";
+let selectedPlanet = sun;
+let selectedPlanetAnimTime = 0;
+let prevSelectedPlanet = sun;
+
+let nameToId = {
+    sun: 0, mercury: 1, venus: 2, earth: 3, mars: 4, jupiter: 5, saturn: 6, uranus:7, neptune:8
+}
+let idToName = ["sun", "mercury", "venus", "earth", "mars", "jupiter", "saturn", "uranus", "neptune"];
+
+function onPlanetSelectedUI(name, object3D)
+{
+    if (selectedPlanetName == name) return;
+
+    let i = idToName.indexOf(name);
+    
+    document.getElementById(selectedPlanetName).textContent = "["+idToName.indexOf(selectedPlanetName)+"] "+selectedPlanetName;
+    document.getElementById(name).textContent = "< ["+i+"] "+name+" >";
+    selectedPlanetName = name;
+
+    prevSelectedPlanet = selectedPlanet;
+    selectedPlanet = object3D;
+    selectedPlanetAnimTime = 0;
+}
+
+function registerPlanetOnUi(name, object3D)
+{
+    let i = idToName.indexOf(name);
+    let planetSelector = document.createElement("p");
+    planetSelector.classList.add("planet");
+    planetSelector.id = name;
+    if (selectedPlanetName == name)
+        planetSelector.textContent = "< ["+i+"] "+name+" >";
+    else planetSelector.textContent = "["+i+"] "+name;
+    planetSelector.addEventListener('pointerdown', () => onPlanetSelectedUI(name, object3D));
+    document.getElementById("planets").appendChild(planetSelector);
+}
+
+registerPlanetOnUi("sun", sun);
+
+onPlanetSelectedUI("sun", sun);
 
 
 camera.position.z = config.camera.z;
@@ -209,37 +289,45 @@ camera.lookAt(sun.position);
 
 let planets = [];
 
-let mercury = new planet("mercury", 2439.4, 0x1a1a1a, scene);
+let mercury = new planet("mercury", 2439.4, 0x4d0400, scene);
 mercury.setKeplerianElements(0.38709843, 0, 0.20563661, 0.00002123, 7.00559432, -0.00590158, 252.2516672, 149472.6749, 77.45771895, 0.15940013, 48.33961819, -0.12214182);
 planets.push(mercury);
+registerPlanetOnUi("mercury", mercury.mesh);
 
-let venus = new planet("venus", 6051.8, 0xe6e6e6, scene);
+let venus = new planet("venus", 6051.8, 0x7c890f, scene);
 venus.setKeplerianElements(0.72332102, -0.00000026, 0.00676399, -0.00005107, 3.39777545, 0.00043494, 181.9797085, 58517.8156, 131.7675571, 0.05679648, 76.67261496, -0.27274174);
 planets.push(venus);
+registerPlanetOnUi("venus", venus.mesh);
 
-let earth = new planet("earth", 6371.0084, 0x2f6a69, scene);
+let earth = new planet("earth", 6371.0084, 0x204dc0, scene);
 earth.setKeplerianElements(1.00000018, -0.00000003, 0.01673163, -0.00003661, -0.00054346, -0.01337178, 100.4669157, 35999.37306, 102.9300589, 0.3179526, -5.11260389, -0.24123856);
 planets.push(earth);
+registerPlanetOnUi("earth", earth.mesh);
 
 let mars = new planet("mars", 3389.50, 0x993d00, scene);
 mars.setKeplerianElements(1.52371243, 0.00000097, 0.09336511, 0.00009149, 1.85181869, -0.00724757, -4.56813164, 19140.29934, -23.91744784, 0.45223625, 49.71320984, -0.26852431);
 planets.push(mars);
+registerPlanetOnUi("mars", mars.mesh);
 
 let jupiter = new planet("jupiter", 69911, 0xb07f35, scene);
 jupiter.setKeplerianElements(5.20248019, -0.00002864, 0.0485359, 0.00018026, 1.29861416, -0.00322699, 34.33479152, 3034.903718, 14.27495244, 0.18199196, 100.2928265, 0.13024619);
 planets.push(jupiter);
+registerPlanetOnUi("jupiter", jupiter.mesh);
 
 let saturn = new planet("saturn", 58232, 0xb08f36, scene);
 saturn.setKeplerianElements(9.54149883, -0.00003065, 0.05550825, -0.00032044, 2.49424102, 0.00451969, 50.07571329, 1222.114947, 92.86136063, 0.54179478, 113.639987, -0.25015002);
 planets.push(saturn);
+registerPlanetOnUi("saturn", saturn.mesh);
 
 let uranus = new planet("uranus", 25362, 0x5580aa, scene);
 uranus.setKeplerianElements(19.18797948, -0.00020455, 0.0468574, -0.0000155, 0.77298127, -0.00180155, 314.2027663, 428.495126, 72.4340444, 0.09266985, 73.96250215, 0.05739699);
 planets.push(uranus);
+registerPlanetOnUi("uranus", uranus.mesh);
 
 let neptune = new planet("neptune", 24622, 0x366896, scene);
 neptune.setKeplerianElements(30.06952752, 0.00006447, 0.00895439, 0.00000818, 1.7700552, 0.000224, 304.2228929, 218.4651531, 46.68158724, 0.01009938, 131.7863585, -0.00606302);
 planets.push(neptune);
+registerPlanetOnUi("neptune", neptune.mesh);
 
 const furthestPlanetDistance = 30.06952752; // Neptune, in AU
 
@@ -304,6 +392,7 @@ mousePluck.add(new THREE.Mesh( new THREE.BoxGeometry( 0.1, 0.1, 0.1 ), new THREE
 mousePluck.children[0].visible = config.debug.mouseStatus;
 scene.add( mousePluck );
 mousePluck.plucking = config.ux.doMousePluck;
+mousePluck.color = 0xffffff;
 let allCares = [mousePluck, sun];
 sun.plucking = true;
 for (let i = 0; i < planets.length; ++i)
@@ -354,7 +443,6 @@ function setUxFriendly(friendly) {
     uxfAnimStart = config.ux.usabilityFactor;
     uxfWannabe = friendly? 1 : 0;
 }
-const uxfAnimTotalTime = 1;
 function checkPointerInteraction() {
     
     mouseRaycaster.setFromCamera(pointerNormalizedPosition, camera);
@@ -455,7 +543,7 @@ canvas.addEventListener('pointerup', function (ev) {
     wasBuildingString = buildingString;
 });
 document.addEventListener('wheel', function(ev) {
-    config.camera.distance = THREE.MathUtils.clamp(config.camera.distance + ev.deltaY * config.camera.scrollSpeed, 2, 100);
+    config.camera.distance = THREE.MathUtils.clamp(config.camera.distance + ev.deltaY * config.camera.scrollSpeed, 0.2, 100);
 });
 //#endregion
 
@@ -513,27 +601,38 @@ function animate() {
 
     if (uxfAnimTime >= 0) {
         uxfAnimTime += deltaTime/1000;
-        let t = uxfAnimTime / uxfAnimTotalTime;
+        let t = uxfAnimTime / config.ux.cameraAnimationTotalTime;
         config.ux.usabilityFactor = THREE.MathUtils.lerp(uxfAnimStart, uxfWannabe, THREE.MathUtils.smootherstep(t, 0, 1));
         if (t >= 1) uxfAnimTime = -1;
     }
 
     let uf = config.ux.usabilityFactor;
 
+    if (selectedPlanetAnimTime >= 0)
+    {
+        selectedPlanetAnimTime += deltaTime/1000;
+        let t = Math.min(1, selectedPlanetAnimTime / config.ux.cameraAnimationTotalTime);
+        if (t >= 1) selectedPlanetAnimTime = -1;
+        cameraRotatingPivot.position.copy(prevSelectedPlanet.position).lerp(selectedPlanet.position, THREE.MathUtils.smootherstep(t, 0, 1));
+    }
+    else cameraRotatingPivot.position.copy(selectedPlanet.position);
+
     cameraDistancePivot.position.z = config.camera.distance;
-    uxfCameraPosition.set(0,config.ux.cameraHeight, uf);
+    // uxfCameraPosition.copy(camUxfPos);
+
     cameraDistancePivot.getWorldPosition(camera.position);
-    camera.position.lerp(uxfCameraPosition, uf);
+    camera.position.lerp(camUxfPos, uf);
     camera.quaternion.copy(cameraDistancePivot.quaternion);
-    camera.lookAt(sun.position);
-    uxfCameraQuaternion.copy(camera.quaternion);
-    camera.quaternion.slerpQuaternions(cameraDistancePivot.quaternion, uxfCameraQuaternion, uf);
+    camera.quaternion.slerp(camUxfQuat, uf);
+    // uxfCameraQuaternion.copy(camera.quaternion);
+    // camera.quaternion.slerpQuaternions(cameraDistancePivot.quaternion, uxfCameraQuaternion, uf);
     //camera.lookAt(sun.position);
     camera.fov = config.camera.fov;
-    camera.updateProjectionMatrix();
     camera.updateMatrixWorld();
+    camera.updateProjectionMatrix();
 
-    let cameraDistanceFactor = Math.max(1, camera.position.length()/config.ux.cameraHeight);
+    uxfCameraPosition.copy(camera.position).sub(cameraRotatingPivot.position);
+    let cameraDistanceFactor = Math.max(1, uxfCameraPosition.length()/config.ux.cameraHeight);
     config.strings.stringWidth = config.strings.width * cameraDistanceFactor;
 
     mousePluck.plucking = config.ux.doMousePluck;

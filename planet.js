@@ -33,6 +33,7 @@ export default class planet
         this.material = new MeshPhongMaterial( { color: color, emissive: color, emissiveIntensity: 0.03 } );
         this.mesh = new Mesh( this.geometry, this.material );
         this.realObject = new Object3D();
+        this.realObject.color = color;
 
         let size = radius / AU;
         this.mesh.scale.set(size,size,size);

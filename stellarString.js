@@ -1,7 +1,7 @@
 import * as THREE from 'three/webgpu';
 import * as Tone from 'tone';
 import { AU, c } from './constants';
-import {assign, Fn, greaterThan, If, mul, PI, sin, time, uv, vec4, float,add, abs, Discard, uniform, div, cos, any} from 'three/tsl';
+import {assign, Fn, greaterThan, If, mul, PI, sin, time, uv, vec4, float,add, abs, Discard, uniform, div, cos, any, mix, lessThan, and, min} from 'three/tsl';
 import { normalize } from 'three/src/math/MathUtils';
 
 export default class stellarString
@@ -82,6 +82,14 @@ export default class stellarString
             frequency: uniform(440),
             width: uniform(0.1),
             intensity: uniform('float'),
+            fromColor: uniform(new THREE.Color(this.from.color)),
+            toColor: uniform(new THREE.Color(this.to.color)),
+            pluckedByColor: uniform(new THREE.Color(this.to.color)),
+            pluckedByRadius: uniform(0.05),
+            pluckedByUv: uniform(0.5),
+            coloredEdge: uniform(0.1),
+            coloredEdgeStart: uniform(0.1),
+            stringColor: uniform(new THREE.Color(config.strings.stringColor)),
         };
 
         const overtone = Fn(([xPi, tF, o]) => {
@@ -94,15 +102,39 @@ export default class stellarString
             const xPi = v.x.mul(PI);
             const tf = time.mul(f);
             const xS = float(0).toVar();
+            const result = vec4(this.uniforms.stringColor.rgb, float(1)).toVar();
+            const w = this.uniforms.width.toVar();
+            const i = float(1).sub(this.uniforms.intensity).toVar();
+            i.assign(i.mul(i));
+            i.assign(float(1).sub(i));
+
             If(this.uniforms.intensity.greaterThan(0), () => {
                 xS.assign(sin(xPi).mul(sin(tf)).add(overtone(xPi, tf, 2)).add(overtone(xPi, tf, 3)).add(overtone(xPi, tf, 4)).add(overtone(xPi, tf, 5)));
                 xS.assign(xS.mul(this.uniforms.intensity));
+                result.assign(mix(result, vec4(1,1,1,1), i));//.add(this.uniforms.pluckedByColor.mul(this.uniforms.intensity)));
+                w.assign(w.add(w.mul(i)));
             });
-            const result = vec4(1,1,1,1).toVar();
-            const y = v.y.sub(0.5).mul(this.uniforms.width.add(2+1));
+            
+            const edge = this.uniforms.coloredEdge.add(this.uniforms.coloredEdgeStart);
+            If(v.x.lessThan(this.uniforms.coloredEdgeStart), () => {
+                result.assign(this.uniforms.toColor);
+            }).ElseIf(v.x.lessThan(edge), () => {
+                result.assign(mix(this.uniforms.toColor, result, v.x.sub(this.uniforms.coloredEdgeStart).div(this.uniforms.coloredEdge)));
+            }).ElseIf(v.x.greaterThan(float(1).sub(edge)), ()=> {
+                result.assign(mix(this.uniforms.fromColor, result, float(1).sub(this.uniforms.coloredEdgeStart).sub(v.x).div(this.uniforms.coloredEdge)));
+            }).ElseIf(v.x.greaterThan(float(1).sub(this.uniforms.coloredEdgeStart)), () => {
+                result.assign(this.uniforms.fromColor);
+            })
+            const y = v.y.sub(0.5).mul(w.add(2+1));
+
+            
+            If (this.uniforms.intensity.greaterThan(0).and(abs(v.x.sub(this.uniforms.pluckedByUv)).lessThan(this.uniforms.pluckedByRadius)), () => {
+                const pl = min(float(1), this.uniforms.intensity.div(float(0.3)));
+                result.assign(mix(result, this.uniforms.pluckedByColor, pl));
+            });
             
             const distance = abs(y.sub(xS));
-            If(distance.greaterThan(this.uniforms.width), () => {
+            If(distance.greaterThan(w), () => {
                 Discard();
             });
             return result;
@@ -131,6 +163,8 @@ export default class stellarString
     update(audioReady, time, deltaTime, transformationFuction, camera)
     {
         this.uniforms.width.value = this.config.strings.fragmentWidth;
+        this.uniforms.stringColor.value.set(this.config.strings.stringColor);
+        //console.log(this.config.strings.stringColor);
 
         if (this.pluckingTime > 0)
         {
@@ -172,14 +206,17 @@ export default class stellarString
 
             if (Math.sign(cross) != Math.sign(lastCross) && dot > 0 && dot < stringLength && audioReady && !pluckedThisFrame) {
                 pluckedThisFrame = true;
-                this.pluckedBy(this.planetsToCare[i]);
+                this.pluckedBy(this.planetsToCare[i], dot/stringLength);
             }
 
             this.planetsCrossProducts[i] = cross;
         }
+        this.uniforms.coloredEdge.value = this.config.strings.coloredEdge/stringLength;
+        this.uniforms.coloredEdgeStart.value = this.config.strings.coloredEdgeStart/stringLength;
+        this.uniforms.pluckedByRadius.value = 0.1/stringLength;
     }
 
-    pluckedBy(planet) {
+    pluckedBy(planet, percentagePluck) {
         let stringLength = this.from.position.distanceTo(this.to.position);
         let frequency = this.config.soundVelocity * c / AU / stringLength;
         let simulationFrequency = frequency * 86400 * this.config.daysPerSecond;
@@ -193,6 +230,8 @@ export default class stellarString
             this.pluckingTime = this.config.strings.fadeOutTime / l;
             this.pluckingFadeoutTime = this.pluckingTime;
             this.uniforms.frequency.value = simulationFrequency;
+            this.uniforms.pluckedByColor.value.setHex(planet.color)
+            this.uniforms.pluckedByUv.value = percentagePluck;
         }
     }
 
