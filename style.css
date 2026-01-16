@@ -69,10 +69,14 @@ body {
     display: flex;
     justify-content:left;
     margin-right: 2em;
-    margin-left: 2em;
+    margin-left: 1em;
 }
-#instructions p {
+#time {
+    margin-left: 0.5em;
     margin-right: 0.5em;
+}
+.instructionBlock {
+    width: 33%;
     margin-top: 0px;
 }
 #actions {
@@ -89,4 +93,60 @@ body {
 }
 .hidden {
     display: none;
+}
+#version {
+    position: absolute;
+    top: 0;
+    right:1em;
+    font-size: 0.8em;
+    color: gray;
+}
+
+
+.slider {
+    pointer-events: auto;
+    width: calc(100% - 1em);
+    margin-left: 0.5em;
+    margin-right: 0.5em;
+
+    -webkit-appearance: none;  /* Override default CSS styles */
+    -moz-appearance: none;
+    appearance: none;
+    height: 0.1rem; /* Specified height */
+    background: white; /* Grey background */
+    color: white;
+    outline: none; /* Remove outline */
+    opacity: 1; /* Set transparency (for mouse-over effects on hover) */
+    -webkit-transition: .2s; /* 0.2 seconds transition on hover */
+    transition: opacity .2s;
+    margin-top: 1rem;
+    margin-bottom: 1rem;
+}
+.slider:hover {
+  opacity: 0.7; /* Fully shown on mouse-over */
+}
+.slider::-webkit-slider-thumb {
+  -webkit-appearance: none; /* Override default look */
+  appearance: none;
+  width: 1rem; /* Set a specific slider handle width */
+  height: 1rem; /* Slider handle height */
+  background: white;
+  cursor: pointer; /* Cursor on hover */
+  border-radius: 0;
+  border-width: 0.1rem;
+  border-color: white;
+}
+
+.slider::-moz-range-thumb {
+  width: 1rem; /* Set a specific slider handle width */
+  height: 1rem; /* Slider handle height */
+  background: white;
+  cursor: pointer; /* Cursor on hover */
+  border-radius: 0;
+  border-width: 0.1rem;
+  border-color: white;
+}
+
+#timeDesc {
+    width: 100%;
 }

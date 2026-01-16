@@ -179,7 +179,7 @@ var bgColor = gui.addColor(config.bg, "backgroundColor");
 bgColor.onChange((v) => {
     scene.background.set(v);
 })
-gui.add(config, "daysPerSecond", 1/24, 365);
+gui.add(config, "daysPerSecond", 1/86400, 365);
 gui.add(config, "soundVelocity", 0.01, 1, 0.01);
 //gui.add(config.ux, "usabilityFactor", 0, 1);
 let cameraGUI = gui.addFolder("Camera");
@@ -235,6 +235,30 @@ function toggleDebug() {
     }
 }
 toggleDebug();
+
+let timeDiv = document.getElementById('timeDesc');
+
+document.getElementById('timeSlider').oninput = function(v) {
+    let val = v.target.valueAsNumber;
+    config.daysPerSecond = val;
+    if (val < 1)
+    {
+        let hours = val * 24;
+        timeDiv.textContent = "time passing at "+hours.toFixed(1)+"  hours/s";
+    }
+    else if (val == 1)
+        timeDiv.textContent = "time passing at "+val+" days/s";
+    else timeDiv.textContent = "time passing at "+val+" day/s";
+}
+
+let speedDiv = document.getElementById('speedDesc');
+document.getElementById('velocitySlider').oninput = function(v) {
+    let val = v.target.valueAsNumber;
+    config.soundVelocity = val;
+    if (val >= 1)
+        speedDiv.textContent = "string wave moving at c";
+    else speedDiv.textContent = "string wave moving at "+(val*100).toFixed(1)+"% c";
+}
 
 //#endregion
 

@@ -38,9 +38,10 @@ export default class planet
 
         this.material = new MeshPhongMaterial( { color: color, emissive: color, emissiveIntensity: 0.03, shininess: 15} );
         if (textureSrc !== undefined) {
-            this.texture = new TextureLoader().load(textureSrc);
-            this.material.color.setHex(0xffffff);
-            this.material.map = this.texture;
+            this.texture = new TextureLoader().loadAsync(textureSrc).then((t) => {
+                this.material.map = t;
+                this.material.color.setHex(0xffffff);
+            })
         }
         if (normalSrc !== undefined) {
             this.normalMap = new TextureLoader().load(normalSrc);
