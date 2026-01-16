@@ -27,7 +27,7 @@ let config = {
         scrollSpeed: 0.005,
     },
     sun: {
-        intensity:3,
+        intensity:2,
     },
     bg: {
         backgroundColor: "#0a0a0a",
