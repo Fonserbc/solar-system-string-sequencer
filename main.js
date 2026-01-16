@@ -9,13 +9,9 @@ import stellarString from './stellarString';
 import starfield from './starfield';
 import Stats from 'stats.js';
 
-// Solar system harp
-// Stelar harp
-// Stellar system harp
-// Star system harp
+// SSSS - Solar System String Sequencer
 
-// Solar System String sequencer S^4
-
+//#region config
 let config = {
     daysPerSecond: 12, // 28
     soundVelocity: 1, // as a percentage of the speed of light, 1 = c
@@ -31,18 +27,18 @@ let config = {
         scrollSpeed: 0.005,
     },
     sun: {
-        intensity:12,
+        intensity:3,
     },
     bg: {
         backgroundColor: "#0a0a0a",
     },
     ux: {
         cameraHeight: 4,
-        marginPercentage: 0.1,
+        marginPercentage: 0.15,
         usabilityFactor: 0,
         doMousePluck: false,
-        planetsVsSpaceFactor: 0.5,
-        sunSizeMultiplier: 3,
+        planetsVsSpaceFactor: 0.7,
+        sunSizeMultiplier: 2.5,
         cameraAnimationTotalTime: 0.7,
     },
     synth: {
@@ -72,9 +68,17 @@ let config = {
         stringColor: "#898989",
     }
 }
+//#endregion
 
+//#region Setup & camera
 let audioReady = false;
 const canvas = document.getElementById("canvas");
+canvas.addEventListener("pointerdown", async () => {
+    if (!audioReady) {
+        await Tone.start();
+        audioReady = true;
+    }
+});
 const safearea = document.getElementById("safe-area");
 
 const VECTOR3 = {
@@ -85,7 +89,6 @@ const VECTOR3 = {
     FORWARD: new THREE.Vector3(0,0,1),
 }
 
-const gui = new dat.GUI({name: 'settings'});
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera( config.camera.fov, window.innerWidth / window.innerHeight, 0.001, 1024 );
 const cameraRotatingPivot = new THREE.Object3D();
@@ -131,7 +134,6 @@ function moveCamera(ev) {
         camUxfPos.y = -config.ux.cameraHeight;
     }
 
-
     // camMovementVec.copy(VECTOR3.DOWN);//.applyQuaternion(cameraRotatingPivot.quaternion);
     // camMovementQuat.setFromAxisAngle(camMovementVec, x);
     // cameraRotatingPivot.quaternion.multiply(camMovementQuat);
@@ -142,24 +144,42 @@ function moveCamera(ev) {
     hasMovedCamera = true;
 }
 
-canvas.addEventListener("pointerdown", async () => {
-    if (!audioReady) {
-        await Tone.start();
-        audioReady = true;
-    }
-});
+let needCheckResize = true;
+let safeWidth = 0;
+let safeHeight = 0;
+let windowWidth = 0;
+let windowHeight = 0;
+let safeAR = 1;
+function checkWindowResize() {
+    let safeareawidth = safearea.offsetWidth;
+    let safeareaheight = safearea.offsetHeight;
+    if (safeWidth != safeareawidth || safeHeight != safeareaheight || needCheckResize) {
+        safeWidth = safeareawidth;
+        safeHeight = safeareaheight;
+        safeAR = safeareawidth / safeareaheight;
+        windowWidth = window.innerWidth;
+        windowHeight = window.innerHeight;
 
-// const loader = new EXRLoader();
-// loader.load( 'data/starmap_2020_4k.exr', (t) => {
-//     t.mapping = THREE.EquirectangularReflectionMapping;
-//     scene.background = t;
-// });
+        renderer.setSize(windowWidth, windowHeight, true);
+        camera.aspect = windowWidth / windowHeight;
+    }
+}
+//#endregion
+
+//#region Stats & GUI
+
+let stats = new Stats();
+stats.showPanel(1);
+document.body.appendChild(stats.dom);
+stats.dom.style.top = "";
+stats.dom.style.bottom = "0px";
+const gui = new dat.GUI({name: 'settings'});
 
 var bgColor = gui.addColor(config.bg, "backgroundColor");
 bgColor.onChange((v) => {
     scene.background.set(v);
 })
-gui.add(config, "daysPerSecond", 1, 365);
+gui.add(config, "daysPerSecond", 1/24, 365);
 gui.add(config, "soundVelocity", 0.01, 1, 0.01);
 //gui.add(config.ux, "usabilityFactor", 0, 1);
 let cameraGUI = gui.addFolder("Camera");
@@ -201,30 +221,24 @@ stringGUI.add(config.strings, "fadeOutTimeFrequency", 50, 10000, 1);
 stringGUI.add(config.strings, "coloredEdge", 0, 3, 0.01);
 stringGUI.add(config.strings, "coloredEdgeStart", 0, 3, 0.01);
 stringGUI.addColor(config.strings, "stringColor");
-stringGUI.open();
 gui.close();
 
-
-let needCheckResize = true;
-let safeWidth = 0;
-let safeHeight = 0;
-let windowWidth = 0;
-let windowHeight = 0;
-let safeAR = 1;
-function checkWindowResize() {
-    let safeareawidth = safearea.offsetWidth;
-    let safeareaheight = safearea.offsetHeight;
-    if (safeWidth != safeareawidth || safeHeight != safeareaheight || needCheckResize) {
-        safeWidth = safeareawidth;
-        safeHeight = safeareaheight;
-        safeAR = safeareawidth / safeareaheight;
-        windowWidth = window.innerWidth;
-        windowHeight = window.innerHeight;
-
-        renderer.setSize(windowWidth, windowHeight, true);
-        camera.aspect = windowWidth / windowHeight;
+function toggleDebug() {
+    if (gui.domElement.classList.contains('hidden'))
+    {
+        gui.domElement.classList.remove('hidden');
+        stats.dom.classList.remove('hidden');
+    }
+    else {
+        gui.domElement.classList.add('hidden');
+        stats.dom.classList.add('hidden');
     }
 }
+toggleDebug();
+
+//#endregion
+
+//#region Scene objects
 
 const renderer = new THREE.WebGPURenderer({canvas: canvas});
 renderer.setSize( window.innerWidth, window.innerHeight );
@@ -232,8 +246,9 @@ document.body.appendChild( renderer.domElement );
 
 const starField = new starfield(config, scene);
 
-const sun = new THREE.Mesh( new THREE.SphereGeometry( 1, 32), new THREE.MeshBasicMaterial( { color: 0xffffdd } ));
-sun.color = 0xffffdd;
+const sun = new THREE.Mesh( new THREE.SphereGeometry( 1, 32), new THREE.MeshBasicMaterial( { color: 0xffffdd , map: new THREE.TextureLoader().load("data/planets/sun.png")} ));
+sun.color = 0xffb400;
+sun.name = "sun";
 const sunRadius = 696340;
 const sunLight = new THREE.PointLight(0xfffffe, config.sun.intensity, 0, 0);
 sun.add(sunLight);
@@ -250,8 +265,19 @@ let nameToId = {
 }
 let idToName = ["sun", "mercury", "venus", "earth", "mars", "jupiter", "saturn", "uranus", "neptune"];
 
+let uxfAnimTime = 0;
+let uxfAnimStart = 0;
+let uxfWannabe = 0;
+
+function setUxFriendly(friendly) {
+    uxfAnimTime = 0;
+    uxfAnimStart = config.ux.usabilityFactor;
+    uxfWannabe = friendly? 1 : 0;
+}
+
 function onPlanetSelectedUI(name, object3D)
-{
+{    
+    setUxFriendly(false);
     if (selectedPlanetName == name) return;
 
     let i = idToName.indexOf(name);
@@ -289,47 +315,45 @@ camera.lookAt(sun.position);
 
 let planets = [];
 
-let mercury = new planet("mercury", 2439.4, 0x4d0400, scene);
+let mercury = new planet("mercury", 2439.4, 0x4d0400, scene, 2, 176, 'data/planets/mercury.jpg', 'data/planets/mercurynormal.jpg');
 mercury.setKeplerianElements(0.38709843, 0, 0.20563661, 0.00002123, 7.00559432, -0.00590158, 252.2516672, 149472.6749, 77.45771895, 0.15940013, 48.33961819, -0.12214182);
 planets.push(mercury);
 registerPlanetOnUi("mercury", mercury.mesh);
 
-let venus = new planet("venus", 6051.8, 0x7c890f, scene);
+let venus = new planet("venus", 6051.8, 0x7c790f, scene, 177, 242, 'data/planets/venus.jpg');
 venus.setKeplerianElements(0.72332102, -0.00000026, 0.00676399, -0.00005107, 3.39777545, 0.00043494, 181.9797085, 58517.8156, 131.7675571, 0.05679648, 76.67261496, -0.27274174);
 planets.push(venus);
 registerPlanetOnUi("venus", venus.mesh);
 
-let earth = new planet("earth", 6371.0084, 0x204dc0, scene);
+let earth = new planet("earth", 6371.0084, 0x204dc0, scene, 23.5, 1, 'data/planets/earth.jpg');
 earth.setKeplerianElements(1.00000018, -0.00000003, 0.01673163, -0.00003661, -0.00054346, -0.01337178, 100.4669157, 35999.37306, 102.9300589, 0.3179526, -5.11260389, -0.24123856);
 planets.push(earth);
 registerPlanetOnUi("earth", earth.mesh);
 
-let mars = new planet("mars", 3389.50, 0x993d00, scene);
+let mars = new planet("mars", 3389.50, 0x993d00, scene, 25, 1.027, 'data/planets/mars.jpg');
 mars.setKeplerianElements(1.52371243, 0.00000097, 0.09336511, 0.00009149, 1.85181869, -0.00724757, -4.56813164, 19140.29934, -23.91744784, 0.45223625, 49.71320984, -0.26852431);
 planets.push(mars);
 registerPlanetOnUi("mars", mars.mesh);
 
-let jupiter = new planet("jupiter", 69911, 0xb07f35, scene);
+let jupiter = new planet("jupiter", 69911, 0xb07f35, scene, 3, 10/24, 'data/planets/jupiter.jpg');
 jupiter.setKeplerianElements(5.20248019, -0.00002864, 0.0485359, 0.00018026, 1.29861416, -0.00322699, 34.33479152, 3034.903718, 14.27495244, 0.18199196, 100.2928265, 0.13024619);
 planets.push(jupiter);
 registerPlanetOnUi("jupiter", jupiter.mesh);
 
-let saturn = new planet("saturn", 58232, 0xb08f36, scene);
+let saturn = new planet("saturn", 58232, 0xb08f36, scene, 26, 10.65/24,'data/planets/saturn.jpg');
 saturn.setKeplerianElements(9.54149883, -0.00003065, 0.05550825, -0.00032044, 2.49424102, 0.00451969, 50.07571329, 1222.114947, 92.86136063, 0.54179478, 113.639987, -0.25015002);
 planets.push(saturn);
 registerPlanetOnUi("saturn", saturn.mesh);
 
-let uranus = new planet("uranus", 25362, 0x5580aa, scene);
+let uranus = new planet("uranus", 25362, 0x5580aa, scene, 97, 0.718055, 'data/planets/uranus.jpg');
 uranus.setKeplerianElements(19.18797948, -0.00020455, 0.0468574, -0.0000155, 0.77298127, -0.00180155, 314.2027663, 428.495126, 72.4340444, 0.09266985, 73.96250215, 0.05739699);
 planets.push(uranus);
 registerPlanetOnUi("uranus", uranus.mesh);
 
-let neptune = new planet("neptune", 24622, 0x366896, scene);
+let neptune = new planet("neptune", 24622, 0x366896, scene, 29.6, 16/24, 'data/planets/neptune.jpg');
 neptune.setKeplerianElements(30.06952752, 0.00006447, 0.00895439, 0.00000818, 1.7700552, 0.000224, 304.2228929, 218.4651531, 46.68158724, 0.01009938, 131.7863585, -0.00606302);
 planets.push(neptune);
 registerPlanetOnUi("neptune", neptune.mesh);
-
-const furthestPlanetDistance = 30.06952752; // Neptune, in AU
 
 
 let timeMS = Date.now();
@@ -367,6 +391,7 @@ function registerString(i, j, string)
 }
 function hasString(i, j)
 {
+    if (i == j) return true;
     return (stringsMap[i] != null && stringsMap[i][j] != null)
         || (stringsMap[j] != null && stringsMap[j][i] != null);
 }
@@ -376,6 +401,16 @@ function removeString(i,j,string)
     stringsMap[i][j] = null;
     stringsMap[j][i] = null;
     string.dispose();
+}
+function createString(i,j)
+{
+    let planetIReal = i == 0? sun : planets[i-1].realObject;
+    let planetIVisual = i == 0? sun : planets[i-1].mesh;
+    let planetJReal = j == 0? sun : planets[j-1].realObject;
+    let planetJVisual = j == 0? sun : planets[j-1].mesh;
+    console.log("making string between", i, j);
+    let string = new stellarString(config, scene, planetIReal, planetJReal, white, allCares, planetIVisual, planetJVisual);
+    registerString(i, j, string);
 }
 
 let interactables = [];
@@ -400,16 +435,45 @@ for (let i = 0; i < planets.length; ++i)
     allCares.push(planets[i].realObject);
 }
 
-// for (let i = 1; i < planets.length; ++i)
-// {
-//     let cares = [mousePluck];
-//     for (let j = i-1; j >= 0; --j) {
-//         cares.push(planets[j].realObject);
-//         planets[j].realObject.plucking = true;
-//     }
-//     let string = new stellarString(config, scene, sun, planets[i].realObject, planets[i].color, cares, sun, planets[i].mesh);
-//     registerString(0, i+1, string);
-// }
+//#region Keyboard Controls
+document.addEventListener('keydown', (ev) => {
+    if (ev.key == '0') onPlanetSelectedUI("sun", sun);
+    else if (ev.key == '1') onPlanetSelectedUI("mercury", mercury.mesh);
+    else if (ev.key == '2') onPlanetSelectedUI("venus", venus.mesh);
+    else if (ev.key == '3') onPlanetSelectedUI("earth", earth.mesh);
+    else if (ev.key == '4') onPlanetSelectedUI("mars", mars.mesh);
+    else if (ev.key == '5') onPlanetSelectedUI("jupiter", jupiter.mesh);
+    else if (ev.key == '6') onPlanetSelectedUI("saturn", saturn.mesh);
+    else if (ev.key == '7') onPlanetSelectedUI("uranus", uranus.mesh);
+    else if (ev.key == '8') onPlanetSelectedUI("neptune", neptune.mesh);
+    else if (ev.key == 'Delete' || ev.key == 'Backspace') {
+        let i = idToName.indexOf(selectedPlanetName);
+        for (let j = 0; j < idToName.length; ++j)
+        {
+            if (i != j && hasString(i,j))
+                removeString(i,j,stringsMap[i][j]);
+        }
+    }
+    else if (ev.key == 'a') {
+        let i = idToName.indexOf(selectedPlanetName);
+        for (let j = 0; j < idToName.length; ++j)
+        {
+            if (i != j && !hasString(i,j))
+                createString(i,j);
+        }
+    }
+    else if (ev.key == ' ')
+    {
+        setUxFriendly(uxfWannabe == 0? true : false);
+    }
+    else if (ev.key == 'd')
+    {
+        toggleDebug();
+    }
+    else console.log(ev.key);
+});
+//#endregion
+
 //#region Pointer interaction
 let lastPointerPosition = new THREE.Vector2();
 let pointerPosition = new THREE.Vector2();
@@ -434,15 +498,6 @@ function processPointer(ev) {
 }
 
 let lastClickedInteractable = -1;
-let uxfAnimTime = 0;
-let uxfAnimStart = 0;
-let uxfWannabe = 0;
-
-function setUxFriendly(friendly) {
-    uxfAnimTime = 0;
-    uxfAnimStart = config.ux.usabilityFactor;
-    uxfWannabe = friendly? 1 : 0;
-}
 function checkPointerInteraction() {
     
     mouseRaycaster.setFromCamera(pointerNormalizedPosition, camera);
@@ -467,9 +522,9 @@ function checkPointerInteraction() {
         hasClickedInteractable = true;
     }
 
-    if (buildingString && pointerDown)
+    if (buildingString)
     {
-        if (!hasClickedInteractable || lastClickedInteractable == closestInteractable) {
+        if (pointerDown && (!hasClickedInteractable || lastClickedInteractable == closestInteractable)) {
             buildingString = false;
             console.log("cancelling string");
             stringBeingBuild.dispose();
@@ -478,28 +533,23 @@ function checkPointerInteraction() {
         }
         else if (hasClickedInteractable)
         {
-            if (hasString(lastClickedInteractable, closestInteractable))
+            let alreadyString = hasString(lastClickedInteractable, closestInteractable);
+            if (pointerDown && alreadyString)
             {
                 removeString(lastClickedInteractable, closestInteractable, stringsMap[lastClickedInteractable][closestInteractable]);
                 console.log("removing string between", lastClickedInteractable, closestInteractable);
                 stringBeingBuild.dispose();
                 stringBeingBuild = null;
+                buildingString = false;
+                lastClickedInteractable = -1;
             }
-            else {
-                let i = closestInteractable;
-                let j = lastClickedInteractable;
-                let planetIReal = i == 0? sun : planets[i-1].realObject;
-                let planetIVisual = i == 0? sun : planets[i-1].mesh;
-                let planetJReal = j == 0? sun : planets[j-1].realObject;
-                let planetJVisual = j == 0? sun : planets[j-1].mesh;
-                console.log("making string between", i, j);
-                let string = new stellarString(config, scene, planetIReal, planetJReal, white, allCares, planetIVisual, planetJVisual);
-                registerString(lastClickedInteractable, closestInteractable, string);
+            else if (!alreadyString) {
+                createString(closestInteractable, lastClickedInteractable);
                 stringBeingBuild.dispose();
                 stringBeingBuild = null;
+                buildingString = false;
+                lastClickedInteractable = -1;
             }
-            buildingString = false;
-            lastClickedInteractable = -1;
         }
     }
     else {
@@ -578,12 +628,6 @@ function deformPositionBasedOnPlanets(pos)
         pos.normalize().multiplyScalar(prev.visualDistanceFromSun + f * visualDistanceBetweenOrbits);
     }
 }
-
-let stats = new Stats();
-stats.showPanel(1);
-document.body.appendChild(stats.dom);
-stats.dom.style.top = "";
-stats.dom.style.bottom = "0px";
 
 let mouseRaycaster = new THREE.Raycaster();
 let pointerInteractionPlane = new THREE.Plane(new THREE.Vector3(0,1, 0), 0);
@@ -680,6 +724,7 @@ function animate() {
     sunSize = lerp(sunSize, directSunScaledSize, config.realisticScaleFactor);
     sunSize = lerp(sunSize, uxfSunRadius, config.ux.usabilityFactor);
     sun.scale.set(sunSize,sunSize,sunSize);
+    sun.quaternion.setFromAxisAngle(VECTOR3.UP, accTimeDays * Math.PI * 2 / 25.67);
 
     for (let i = 0; i < planets.length; ++i) {
         let p = planets[i];

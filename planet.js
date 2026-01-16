@@ -1,6 +1,7 @@
-import { MathUtils } from "three";
-import { Mesh, MeshBasicMaterial, MeshLambertMaterial, MeshPhongMaterial, Object3D, Sphere, SphereGeometry, Vector3 } from "three/webgpu";
+import { MathUtils, ObjectSpaceNormalMap } from "three";
+import { Mesh, MeshBasicMaterial, MeshLambertMaterial, MeshPhongMaterial, Object3D, Quaternion, Sphere, SphereGeometry, TextureLoader, Vector3 } from "three/webgpu";
 import { AU } from "./constants";
+import { shininess } from "three/tsl";
 
 function sin (d) {
     return Math.sin(d * MathUtils.DEG2RAD);
@@ -20,20 +21,37 @@ const CIRCLE = 2 * Math.PI;
 
 export default class planet
 {
-    constructor(name, radius, color, scene)
+    constructor(name, radius, color, scene, tilt, dayDuration, textureSrc, normalSrc)
     {
         this.name = name;
         this.radius = radius;
         this.color = color;
         this.computedPosition = new Vector3();
         this.meshPosition = new Vector3();
+        this.tilt = tilt/ 180 * Math.PI;// + Math.PI;
+        this.dayDuration = dayDuration; // in earth days
+        this.tiltQuaternion = new Quaternion();
+        this.rotationAxis = new Vector3(0,1,0);
+        this.tiltQuaternion.setFromAxisAngle(new Vector3(1,0,0), this.tilt);
 
         this.geometry = new SphereGeometry(1, 32);
 
-        this.material = new MeshPhongMaterial( { color: color, emissive: color, emissiveIntensity: 0.03 } );
+        this.material = new MeshPhongMaterial( { color: color, emissive: color, emissiveIntensity: 0.03, shininess: 15} );
+        if (textureSrc !== undefined) {
+            this.texture = new TextureLoader().load(textureSrc);
+            this.material.color.setHex(0xffffff);
+            this.material.map = this.texture;
+        }
+        if (normalSrc !== undefined) {
+            this.normalMap = new TextureLoader().load(normalSrc);
+            this.material.normalMap = this.normalMap;
+            this.material.normalScale.y = -1;
+        }
         this.mesh = new Mesh( this.geometry, this.material );
+        this.mesh.name = name;
         this.realObject = new Object3D();
         this.realObject.color = color;
+        this.realObject.name = name;
 
         let size = radius / AU;
         this.mesh.scale.set(size,size,size);
@@ -113,6 +131,9 @@ export default class planet
         //console.log(e, 1 - e*e);
 
         this.computedPosition.set(a * (Math.cos(E) - e), 0, a * (Math.sqrt(1 - (e * e))) * Math.sin(E));
+
+        this.mesh.quaternion.setFromAxisAngle(this.rotationAxis, time * 2 * Math.PI / this.dayDuration);
+        this.mesh.quaternion.premultiply(this.tiltQuaternion);
     }
 
     update(uxDistanceFromSun, uxFactor)
@@ -129,6 +150,9 @@ export default class planet
             this.mesh.position.copy(this.computedPosition);
         }
         this.realObject.position.copy(this.computedPosition);
+
+        //
+
     }
 }
 

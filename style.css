@@ -50,9 +50,13 @@ body {
     width: 100%;
     height: 100%;
     display: block;
+
+    -webkit-user-select: none; /* Safari */
+    -ms-user-select: none; /* IE 10 and IE 11 */
+    user-select: none; /* Standard syntax */
+    touch-action:none;
 }
 #planets {
-    touch-action: auto;
     pointer-events: auto;
     float:left;
     margin-left: 1em;
@@ -69,12 +73,20 @@ body {
 }
 #instructions p {
     margin-right: 0.5em;
+    margin-top: 0px;
 }
 #actions {
+    position: absolute;
     display: flex;
-    justify-content:left;
+    justify-content:right;
+    bottom: 0;
+    right:1em;
+    font-size: 0.8em;
+    color: gray;
 }
-#delete {
-    margin-right: 3em;
-    margin-left: 3em;
+#actions p {
+    margin-left: 1rem;
+}
+.hidden {
+    display: none;
 }

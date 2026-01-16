@@ -222,9 +222,13 @@ export default class stellarString
         let simulationFrequency = frequency * 86400 * this.config.daysPerSecond;
 
         let now = Tone.now();
-        if (now > this.lastPluckedTime && simulationFrequency < 20000 && simulationFrequency > 15) {
+        if (now > this.lastPluckedTime) {
             //console.log("plucked by", planet.name, simulationFrequency)
-            this.pluck.triggerAttack(simulationFrequency);
+            if (simulationFrequency < 24000 && simulationFrequency > 16)
+                this.pluck.triggerAttack(simulationFrequency);
+            else {
+                console.log(planet.name, "plucked string ["+this.from.name+" - "+this.to.name+"], resulting in a vibration frequency of", simulationFrequency);
+            }
             this.lastPluckedTime = now;
             let l = Math.pow(simulationFrequency / this.config.strings.fadeOutTimeFrequency, 0.33333333);
             this.pluckingTime = this.config.strings.fadeOutTime / l;
