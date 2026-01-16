@@ -1,4 +1,4 @@
-import { MathUtils, ObjectSpaceNormalMap } from "three";
+import { MathUtils, ObjectSpaceNormalMap, SRGBColorSpace } from "three";
 import { Mesh, MeshBasicMaterial, MeshLambertMaterial, MeshPhongMaterial, Object3D, Quaternion, Sphere, SphereGeometry, TextureLoader, Vector3 } from "three/webgpu";
 import { AU } from "./constants";
 import { shininess } from "three/tsl";
@@ -21,7 +21,7 @@ const CIRCLE = 2 * Math.PI;
 
 export default class planet
 {
-    constructor(name, radius, color, scene, tilt, dayDuration, textureSrc, normalSrc)
+    constructor(name, radius, color, scene, tilt, dayDuration, textureLoader, textureSrc, normalSrc)
     {
         this.name = name;
         this.radius = radius;
@@ -38,13 +38,13 @@ export default class planet
 
         this.material = new MeshPhongMaterial( { color: color, emissive: color, emissiveIntensity: 0.03, shininess: 15} );
         if (textureSrc !== undefined) {
-            this.texture = new TextureLoader().loadAsync(textureSrc).then((t) => {
-                this.material.map = t;
-                this.material.color.setHex(0xffffff);
-            })
+            this.texture = textureLoader.load(textureSrc);
+            this.texture.colorSpace = SRGBColorSpace;
+            this.material.map = this.texture;
+            this.material.color.setHex(0xffffff);
         }
         if (normalSrc !== undefined) {
-            this.normalMap = new TextureLoader().load(normalSrc);
+            this.normalMap = textureLoader.load(normalSrc);
             this.material.normalMap = this.normalMap;
             this.material.normalScale.y = -1;
         }

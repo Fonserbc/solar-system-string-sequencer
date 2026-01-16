@@ -27,7 +27,7 @@ let config = {
         scrollSpeed: 0.005,
     },
     sun: {
-        intensity:2,
+        intensity:3,
     },
     bg: {
         backgroundColor: "#0a0a0a",
@@ -270,7 +270,8 @@ document.body.appendChild( renderer.domElement );
 
 const starField = new starfield(config, scene);
 
-const sun = new THREE.Mesh( new THREE.SphereGeometry( 1, 32), new THREE.MeshBasicMaterial( { color: 0xffffdd , map: new THREE.TextureLoader().load("data/planets/sun.png")} ));
+const textureLoader = new THREE.TextureLoader();
+const sun = new THREE.Mesh( new THREE.SphereGeometry( 1, 32), new THREE.MeshBasicMaterial( { color: 0xffffdd , map: textureLoader.load("data/planets/sun.png")} ));
 sun.color = 0xffb400;
 sun.name = "sun";
 const sunRadius = 696340;
@@ -339,42 +340,42 @@ camera.lookAt(sun.position);
 
 let planets = [];
 
-let mercury = new planet("mercury", 2439.4, 0x4d0400, scene, 2, 176, 'data/planets/mercury.jpg', 'data/planets/mercurynormal.jpg');
+let mercury = new planet("mercury", 2439.4, 0x4d0400, scene, 2, 176, textureLoader, 'data/planets/mercury.jpg', 'data/planets/mercurynormal.jpg');
 mercury.setKeplerianElements(0.38709843, 0, 0.20563661, 0.00002123, 7.00559432, -0.00590158, 252.2516672, 149472.6749, 77.45771895, 0.15940013, 48.33961819, -0.12214182);
 planets.push(mercury);
 registerPlanetOnUi("mercury", mercury.mesh);
 
-let venus = new planet("venus", 6051.8, 0x7c790f, scene, 177, 242, 'data/planets/venus.jpg');
+let venus = new planet("venus", 6051.8, 0x7c790f, scene, 177, 242, textureLoader, 'data/planets/venus.jpg');
 venus.setKeplerianElements(0.72332102, -0.00000026, 0.00676399, -0.00005107, 3.39777545, 0.00043494, 181.9797085, 58517.8156, 131.7675571, 0.05679648, 76.67261496, -0.27274174);
 planets.push(venus);
 registerPlanetOnUi("venus", venus.mesh);
 
-let earth = new planet("earth", 6371.0084, 0x204dc0, scene, 23.5, 1, 'data/planets/earth.jpg');
+let earth = new planet("earth", 6371.0084, 0x204dc0, scene, 23.5, 1, textureLoader, 'data/planets/earth.jpg');
 earth.setKeplerianElements(1.00000018, -0.00000003, 0.01673163, -0.00003661, -0.00054346, -0.01337178, 100.4669157, 35999.37306, 102.9300589, 0.3179526, -5.11260389, -0.24123856);
 planets.push(earth);
 registerPlanetOnUi("earth", earth.mesh);
 
-let mars = new planet("mars", 3389.50, 0x993d00, scene, 25, 1.027, 'data/planets/mars.jpg');
+let mars = new planet("mars", 3389.50, 0x993d00, scene, 25, 1.027, textureLoader, 'data/planets/mars.jpg');
 mars.setKeplerianElements(1.52371243, 0.00000097, 0.09336511, 0.00009149, 1.85181869, -0.00724757, -4.56813164, 19140.29934, -23.91744784, 0.45223625, 49.71320984, -0.26852431);
 planets.push(mars);
 registerPlanetOnUi("mars", mars.mesh);
 
-let jupiter = new planet("jupiter", 69911, 0xb07f35, scene, 3, 10/24, 'data/planets/jupiter.jpg');
+let jupiter = new planet("jupiter", 69911, 0xb07f35, scene, 3, 10/24, textureLoader, 'data/planets/jupiter.jpg');
 jupiter.setKeplerianElements(5.20248019, -0.00002864, 0.0485359, 0.00018026, 1.29861416, -0.00322699, 34.33479152, 3034.903718, 14.27495244, 0.18199196, 100.2928265, 0.13024619);
 planets.push(jupiter);
 registerPlanetOnUi("jupiter", jupiter.mesh);
 
-let saturn = new planet("saturn", 58232, 0xb08f36, scene, 26, 10.65/24,'data/planets/saturn.jpg');
+let saturn = new planet("saturn", 58232, 0xb08f36, scene, 26, 10.65/24, textureLoader, 'data/planets/saturn.jpg');
 saturn.setKeplerianElements(9.54149883, -0.00003065, 0.05550825, -0.00032044, 2.49424102, 0.00451969, 50.07571329, 1222.114947, 92.86136063, 0.54179478, 113.639987, -0.25015002);
 planets.push(saturn);
 registerPlanetOnUi("saturn", saturn.mesh);
 
-let uranus = new planet("uranus", 25362, 0x5580aa, scene, 97, 0.718055, 'data/planets/uranus.jpg');
+let uranus = new planet("uranus", 25362, 0x5580aa, scene, 97, 0.718055, textureLoader, 'data/planets/uranus.jpg');
 uranus.setKeplerianElements(19.18797948, -0.00020455, 0.0468574, -0.0000155, 0.77298127, -0.00180155, 314.2027663, 428.495126, 72.4340444, 0.09266985, 73.96250215, 0.05739699);
 planets.push(uranus);
 registerPlanetOnUi("uranus", uranus.mesh);
 
-let neptune = new planet("neptune", 24622, 0x366896, scene, 29.6, 16/24, 'data/planets/neptune.jpg');
+let neptune = new planet("neptune", 24622, 0x366896, scene, 29.6, 16/24, textureLoader, 'data/planets/neptune.jpg');
 neptune.setKeplerianElements(30.06952752, 0.00006447, 0.00895439, 0.00000818, 1.7700552, 0.000224, 304.2228929, 218.4651531, 46.68158724, 0.01009938, 131.7863585, -0.00606302);
 planets.push(neptune);
 registerPlanetOnUi("neptune", neptune.mesh);
