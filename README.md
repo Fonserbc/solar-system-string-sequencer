@@ -1,4 +1,4 @@
-# Solar System String Sequencer
+# Solar System String Sequencer (WIP)
 [ferran.games/ssss](https://ferran.games/ssss)
 
 How does our solar system sound like?
