@@ -1,13 +1,14 @@
 {
-  "name": "solar-system-harp",
+  "name": "solar-system-string-sequencer",
   "version": "1.0.0",
-  "description": "",
+  "description": "A simulation of our solar system, using aproximate keplerian elements, which allows for strings between different celestial bodies to be constructed for its musical exploration",
   "license": "ISC",
-  "author": "fonserbc",
+  "author": "ferran.games",
   "type": "commonjs",
   "main": "main.js",
   "scripts": {
-    "serve": "npx vite"
+    "serve": "npx vite",
+    "build": "npx vite build"
   },
   "dependencies": {
     "dat.gui": "^0.7.9",
