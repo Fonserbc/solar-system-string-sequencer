@@ -1,5 +1,13 @@
 import { defineConfig } from 'vite'
 
-export default defineConfig({
-    base: "https://ferran.games/ssss"
+export default defineConfig(({command
+, mode
+, isSsrBuild
+, isPreview}) => {
+    if (command === "build") {
+        return { base: "https://ferran.games/ssss"};
+    }
+    else {
+        return {};
+    }
 });

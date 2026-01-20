@@ -66,6 +66,12 @@ let config = {
         coloredEdge: 0.12,
         coloredEdgeStart: 0.12,
         stringColor: "#898989",
+    },
+    rings: {
+        saturnRingSize: 2.4,
+        saturnRingStart: 0.53,
+        uranusRingSize: 2.3,
+        uranusRingStart: 0.58,
     }
 }
 //#endregion
@@ -221,6 +227,11 @@ stringGUI.add(config.strings, "fadeOutTimeFrequency", 50, 10000, 1);
 stringGUI.add(config.strings, "coloredEdge", 0, 3, 0.01);
 stringGUI.add(config.strings, "coloredEdgeStart", 0, 3, 0.01);
 stringGUI.addColor(config.strings, "stringColor");
+// let ringsGUI = gui.addFolder("rings");
+// ringsGUI.add(config.rings, "saturnRingSize", 0, 4);
+// ringsGUI.add(config.rings, "saturnRingStart", 0, 1, 0.01);
+// ringsGUI.add(config.rings, "uranusRingSize", 0, 4);
+// ringsGUI.add(config.rings, "uranusRingStart", 0, 1, 0.01);
 gui.close();
 
 function toggleDebug() {
@@ -365,12 +376,12 @@ jupiter.setKeplerianElements(5.20248019, -0.00002864, 0.0485359, 0.00018026, 1.2
 planets.push(jupiter);
 registerPlanetOnUi("jupiter", jupiter.mesh);
 
-let saturn = new planet("saturn", 58232, 0xb08f36, scene, 26, 10.65/24, textureLoader, 'data/planets/saturn.jpg');
+let saturn = new planet("saturn", 58232, 0xb08f36, scene, 26, 10.65/24, textureLoader, 'data/planets/saturn.jpg', undefined, 'data/planets/saturnring.png', config.rings.saturnRingSize, config.rings.saturnRingStart);
 saturn.setKeplerianElements(9.54149883, -0.00003065, 0.05550825, -0.00032044, 2.49424102, 0.00451969, 50.07571329, 1222.114947, 92.86136063, 0.54179478, 113.639987, -0.25015002);
 planets.push(saturn);
 registerPlanetOnUi("saturn", saturn.mesh);
 
-let uranus = new planet("uranus", 25362, 0x5580aa, scene, 97, 0.718055, textureLoader, 'data/planets/uranus.jpg');
+let uranus = new planet("uranus", 25362, 0x5580aa, scene, 97, 0.718055, textureLoader, 'data/planets/uranus.jpg', undefined, 'data/planets/uranusring.png', config.rings.uranusRingSize, config.rings.uranusRingStart);
 uranus.setKeplerianElements(19.18797948, -0.00020455, 0.0468574, -0.0000155, 0.77298127, -0.00180155, 314.2027663, 428.495126, 72.4340444, 0.09266985, 73.96250215, 0.05739699);
 planets.push(uranus);
 registerPlanetOnUi("uranus", uranus.mesh);
@@ -654,6 +665,7 @@ function deformPositionBasedOnPlanets(pos)
     }
 }
 
+//#region Update
 let mouseRaycaster = new THREE.Raycaster();
 let pointerInteractionPlane = new THREE.Plane(new THREE.Vector3(0,1, 0), 0);
 let uxfCameraPosition = new THREE.Vector3();
@@ -755,12 +767,13 @@ function animate() {
         let p = planets[i];
         let uxfRadius = uxfSpaceStart + i * (uxfSpaceBetweenPlanets + uxfPlanetRadius * 2);//(i + 1) * maxUxRadius / planets.length;
         p.computeCoordinates(accTimeDays);
-        p.update(uxfRadius, config.ux.usabilityFactor);
+        
         let size = lerp(p.radius / AU, config.unifiedScale, config.unifiedScaleFactor);
         let directScaledSize = config.realisticScale * p.radius / AU;
         size = lerp(size, directScaledSize, config.realisticScaleFactor);
         size = lerp(size, uxfPlanetRadius, config.ux.usabilityFactor);
-        p.mesh.scale.set(size,size,size);
+
+        p.update(uxfRadius, config.ux.usabilityFactor, config.rings, size);
     }
 
     if (stringBeingBuild != null) {

@@ -1,7 +1,7 @@
 import { MathUtils, ObjectSpaceNormalMap, SRGBColorSpace } from "three";
-import { Mesh, MeshBasicMaterial, MeshLambertMaterial, MeshPhongMaterial, Object3D, Quaternion, Sphere, SphereGeometry, TextureLoader, Vector3 } from "three/webgpu";
+import { DoubleSide, Mesh, MeshBasicMaterial, MeshBasicNodeMaterial, MeshLambertMaterial, MeshPhongMaterial, Object3D, Plane, PlaneGeometry, Quaternion, Sphere, SphereGeometry, TextureLoader, Vector3 } from "three/webgpu";
 import { AU } from "./constants";
-import { shininess } from "three/tsl";
+import { vec4, positionWorld, positionWorldDirection, float, Fn, shininess, uv, sub, mul, length, vec2, texture, If, lessThan, Discard, uniform, assign, max, div, lessThanEqual, or, lengthSq, normalize } from "three/tsl";
 
 function sin (d) {
     return Math.sin(d * MathUtils.DEG2RAD);
@@ -21,7 +21,7 @@ const CIRCLE = 2 * Math.PI;
 
 export default class planet
 {
-    constructor(name, radius, color, scene, tilt, dayDuration, textureLoader, textureSrc, normalSrc)
+    constructor(name, radius, color, scene, tilt, dayDuration, textureLoader, textureSrc, normalSrc, ringSrc, ringRelativeSize, ringStart)
     {
         this.name = name;
         this.radius = radius;
@@ -53,8 +53,50 @@ export default class planet
         this.realObject = new Object3D();
         this.realObject.color = color;
         this.realObject.name = name;
-
         let size = radius / AU;
+
+        if (ringSrc !== undefined) {
+            this.uniforms = {
+                ringStart: uniform(ringStart),
+                planetCenter: uniform(new Vector3().copy(this.mesh.position)),
+                planetOrbitSq: uniform(size*size),
+                planetOrbit: uniform(size),
+                planetRadiusSq: uniform(size*size),
+            }
+            this.ringMaterial = new MeshBasicNodeMaterial({map: textureLoader.load(ringSrc), transparent: true, side: DoubleSide});
+            const main = Fn(() => {
+                const c = uv().sub(vec2(0.5,0.5)).mul(2);
+                const cl = length(c);
+                const ringSpace = float(1).sub(this.uniforms.ringStart);
+                const r = max(0, cl.sub(this.uniforms.ringStart).div(ringSpace));
+                If(r.lessThanEqual(0).or(float(1).lessThanEqual(r)), () => {
+                    Discard();
+                });
+                const col = texture(this.ringMaterial.map, vec2(float(1).sub(r), 0.5)).toVar();
+                If(col.a.lessThan(0.2), () => {
+                    Discard();
+                });
+                // Shadow
+                const p = positionWorld;
+                If(this.uniforms.planetOrbitSq.lessThan(lengthSq(p)), () => {
+                    //col.r.assign(1);
+                    const projectedPosition = normalize(positionWorld).mul(this.uniforms.planetOrbit);
+                    const projectedRadiusSq = lengthSq(projectedPosition.sub(this.uniforms.planetCenter));
+                    
+                    If(projectedRadiusSq.lessThan(this.uniforms.planetRadiusSq),
+                    () => {
+                        col.rgb.assign(col.mul(0.02).rgb);
+                    })
+                });
+                return col;
+            });
+            this.ringMaterial.fragmentNode = main();
+            this.ring = new Mesh(new PlaneGeometry(2, 2, 1, 1), this.ringMaterial);
+            this.ring.scale.set(ringRelativeSize, ringRelativeSize, ringRelativeSize);
+            this.mesh.add(this.ring);
+            this.ring.quaternion.setFromAxisAngle(new Vector3(1,0,0), Math.PI * 0.5);
+        }
+
         this.mesh.scale.set(size,size,size);
 
         this.realDistanceFromSun = 1;
@@ -137,7 +179,7 @@ export default class planet
         this.mesh.quaternion.premultiply(this.tiltQuaternion);
     }
 
-    update(uxDistanceFromSun, uxFactor)
+    update(uxDistanceFromSun, uxFactor, ringsConfig, size)
     {
         if (uxFactor > 0) {
             //let distanceFromSun = this.computedPosition.length();
@@ -151,9 +193,25 @@ export default class planet
             this.mesh.position.copy(this.computedPosition);
         }
         this.realObject.position.copy(this.computedPosition);
+        this.mesh.scale.set(size,size,size);
 
-        //
-
+        if (this.name == "saturn")
+        {
+            this.uniforms.ringStart.value = ringsConfig.saturnRingStart;
+            this.ring.scale.set(ringsConfig.saturnRingSize, ringsConfig.saturnRingSize, ringsConfig.saturnRingSize);
+        }
+        else if (this.name == "uranus")
+        {
+            this.uniforms.ringStart.value = ringsConfig.uranusRingStart;
+            this.ring.scale.set(ringsConfig.uranusRingSize, ringsConfig.uranusRingSize, ringsConfig.uranusRingSize);
+        }
+        if (this.uniforms !== undefined) {
+            this.uniforms.planetRadiusSq.value = size*size;
+            this.uniforms.planetCenter.value.copy(this.mesh.position);
+            let orbitRadius = this.mesh.position.length();
+            this.uniforms.planetOrbit.value = orbitRadius;
+            this.uniforms.planetOrbitSq.value = orbitRadius * orbitRadius;
+        }
     }
 }
 
