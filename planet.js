@@ -1,5 +1,5 @@
 import { MathUtils, ObjectSpaceNormalMap, SRGBColorSpace } from "three";
-import { DoubleSide, Mesh, MeshBasicMaterial, MeshBasicNodeMaterial, MeshLambertMaterial, MeshPhongMaterial, Object3D, Plane, PlaneGeometry, Quaternion, Sphere, SphereGeometry, TextureLoader, Vector3 } from "three/webgpu";
+import { DoubleSide, Mesh, MeshBasicMaterial, MeshBasicNodeMaterial, MeshLambertMaterial, MeshPhongMaterial, MeshStandardMaterial, Object3D, Plane, PlaneGeometry, Quaternion, Sphere, SphereGeometry, TextureLoader, Vector3 } from "three/webgpu";
 import { AU } from "./constants";
 import { vec4, positionWorld, positionWorldDirection, float, Fn, shininess, uv, sub, mul, length, vec2, texture, If, lessThan, Discard, uniform, assign, max, div, lessThanEqual, or, lengthSq, normalize } from "three/tsl";
 
@@ -34,9 +34,24 @@ export default class planet
         this.rotationAxis = new Vector3(0,1,0);
         this.tiltQuaternion.setFromAxisAngle(new Vector3(1,0,0), this.tilt);
 
-        this.geometry = new SphereGeometry(1, 32);
+        this.geometry = new SphereGeometry(1, 64);
 
-        this.material = new MeshPhongMaterial( { color: color, emissive: color, emissiveIntensity: 0.03, shininess: 15} );
+        
+        if (name == "earth") {
+            this.material = new MeshStandardMaterial(
+            { color: color,
+                emissive: 0xffffff,
+                emissiveIntensity: 0.1,
+                roughnessMap: textureLoader.load('data/planets/earthwatermap.jpg'),
+                roughness: 0.7,
+                emissiveMap: textureLoader.load('data/planets/earth_nighttime.jpg'),
+            });
+            let cloudTexture = textureLoader.load('data/planets/earth_cloud.png');
+            this.clouds = new Mesh(this.geometry,
+                new MeshLambertMaterial({map: cloudTexture, alphaMap: cloudTexture, transparent: true, opacity: 0.5}));
+        }
+        else this.material = new MeshStandardMaterial( { color: color, emissive: color, emissiveIntensity: 0.03, shininess: 15} );
+
         if (textureSrc !== undefined) {
             this.texture = textureLoader.load(textureSrc);
             this.texture.colorSpace = SRGBColorSpace;
@@ -55,6 +70,11 @@ export default class planet
         this.realObject.name = name;
         let size = radius / AU;
 
+        if (this.clouds !== undefined) {
+            this.mesh.add(this.clouds);
+            let cloudsScale = 1.01;
+            this.clouds.scale.multiplyScalar(cloudsScale);
+        }
         if (ringSrc !== undefined) {
             this.uniforms = {
                 ringStart: uniform(ringStart),
@@ -177,6 +197,9 @@ export default class planet
 
         this.mesh.quaternion.setFromAxisAngle(this.rotationAxis, time * 2 * Math.PI / this.dayDuration);
         this.mesh.quaternion.premultiply(this.tiltQuaternion);
+        if (this.clouds !== undefined) {
+            this.clouds.rotateY(0.000005*time);
+        }
     }
 
     update(uxDistanceFromSun, uxFactor, ringsConfig, size)
