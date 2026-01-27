@@ -83,6 +83,7 @@ canvas.addEventListener("pointerdown", async () => {
     if (!audioReady) {
         await Tone.start();
         audioReady = true;
+        toneListener = new Tone.getListener();
     }
 });
 const safearea = document.getElementById("safe-area");
@@ -278,6 +279,10 @@ document.getElementById('velocitySlider').oninput = function(v) {
 const renderer = new THREE.WebGPURenderer({canvas: canvas});
 renderer.setSize( window.innerWidth, window.innerHeight );
 document.body.appendChild( renderer.domElement );
+
+let toneListener = null;
+const toneListenerFwd = new THREE.Vector3();
+const toneListenerUp = new THREE.Vector3();
 
 const starField = new starfield(config, scene);
 
@@ -710,7 +715,7 @@ function animate() {
     //camera.lookAt(sun.position);
     camera.fov = config.camera.fov;
     camera.updateMatrixWorld();
-    camera.updateProjectionMatrix();
+    camera.updateProjectionMatrix();    
 
     uxfCameraPosition.copy(camera.position).sub(cameraRotatingPivot.position);
     let cameraDistanceFactor = Math.max(1, uxfCameraPosition.length()/config.ux.cameraHeight);
@@ -786,6 +791,16 @@ function animate() {
     renderer.render( scene, camera );
 
     if (audioReady) {
+        toneListener.positionX.value = camera.position.x;
+        toneListener.positionY.value = camera.position.y;
+        toneListener.positionZ.value = camera.position.z;
+        camera.getWorldDirection(toneListenerFwd);
+        toneListener.forwardX.value = toneListenerFwd.x;
+        toneListener.forwardY.value = toneListenerFwd.y;
+        toneListener.forwardZ.value = toneListenerFwd.z;
+        toneListener.upX.value = camera.up.x;
+        toneListener.upY.value = camera.up.y;
+        toneListener.upZ.value = camera.up.z;
         
         // synthCountdown -= deltaTime;
         // let period = 2000;

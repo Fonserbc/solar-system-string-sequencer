@@ -20,7 +20,10 @@ export default class stellarString
 
     constructor(config, scene, fromObject, toObject, color, planetsToCare, fromObjectVisual, toObjectVisual)
     {
-        this.pluck = new Tone.PluckSynth(config.pluck).toDestination();
+        this.panner = new Tone.Panner3D({panningModel: "HRTF", distanceModel: "linear"}).toDestination();//
+        this.panner.setPosition(fromObject.position.x, fromObject.position.y, fromObject.position.z);
+        this.pluck = new Tone.PluckSynth(config.pluck);
+        this.pluck.connect(this.panner);
         this.scene = scene;
         this.from = fromObject;
         this.to = toObject;
@@ -224,6 +227,7 @@ export default class stellarString
         let now = Tone.now();
         if (now > this.lastPluckedTime) {
             //console.log("plucked by", planet.name, simulationFrequency)
+            this.panner.setPosition(planet.position.x, planet.position.y, planet.position.z);
             if (simulationFrequency < 24000 && simulationFrequency > 16)
                 this.pluck.triggerAttack(simulationFrequency);
             else {
