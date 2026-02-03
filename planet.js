@@ -1,7 +1,7 @@
 import { MathUtils, ObjectSpaceNormalMap, SRGBColorSpace } from "three";
-import { DoubleSide, Mesh, MeshBasicMaterial, MeshBasicNodeMaterial, MeshLambertMaterial, MeshPhongMaterial, MeshStandardMaterial, Object3D, Plane, PlaneGeometry, Quaternion, Sphere, SphereGeometry, TextureLoader, Vector3 } from "three/webgpu";
+import { BufferAttribute, BufferGeometry, DoubleSide, Line, LineBasicMaterial, LineLoop, Mesh, MeshBasicMaterial, MeshBasicNodeMaterial, MeshLambertMaterial, MeshPhongMaterial, MeshStandardMaterial, Object3D, Plane, PlaneGeometry, Quaternion, Sphere, SphereGeometry, TextureLoader, Vector3 } from "three/webgpu";
 import { AU } from "./constants";
-import { vec4, positionWorld, positionWorldDirection, float, Fn, shininess, uv, sub, mul, length, vec2, texture, If, lessThan, Discard, uniform, assign, max, div, lessThanEqual, or, lengthSq, normalize } from "three/tsl";
+import { vec4, positionWorld, positionWorldDirection, float, Fn, shininess, uv, sub, mul, length, vec2, texture, If, lessThan, Discard, uniform, assign, max, div, lessThanEqual, or, lengthSq, normalize, bufferAttribute } from "three/tsl";
 
 function sin (d) {
     return Math.sin(d * MathUtils.DEG2RAD);
@@ -33,6 +33,7 @@ export default class planet
         this.tiltQuaternion = new Quaternion();
         this.rotationAxis = new Vector3(0,1,0);
         this.tiltQuaternion.setFromAxisAngle(new Vector3(1,0,0), this.tilt);
+        this.scene = scene;
 
         this.geometry = new SphereGeometry(1, 64);
 
@@ -139,7 +140,27 @@ export default class planet
         this.longitudeOfPerihelion = lp0;   // degrees
         this._lp = lp;                      // degrees/century
         this.longitudeOfAscendingNode = o0; // degrees
-        this._o = o;                        // degrees/century
+        this._o = o;    
+        
+        // Orbit
+        let orbitCount = 360 + 1;
+        this.orbitPoints = new Float32Array(orbitCount*3);
+
+        let orbitPeriod = (orbitCount-1) * 36525/L; // In dayso
+        let daysOrbitSample = orbitPeriod / (orbitCount-1);
+        
+        for (let i = 0; i < orbitCount; ++i)
+        {
+            this.computeCoordinates(daysOrbitSample * i, false);
+            this.orbitPoints[i*3] = this.computedPosition.x;
+            this.orbitPoints[i*3 + 1] = this.computedPosition.y;
+            this.orbitPoints[i*3 + 2] = this.computedPosition.z;
+        }
+
+        this.orbitMaterial = new LineBasicMaterial({color: this.color, opacity: 1, transparent: true});
+        this.orbit = new Line(new BufferGeometry().setAttribute('position', new BufferAttribute(this.orbitPoints, 3)), this.orbitMaterial);
+        this.scene.add(this.orbit);
+        this.orbit.visible = false;// degrees/century
     }
 
     setAdditionalTerms(b, c, s, f) {
@@ -153,7 +174,7 @@ export default class planet
         return this.b !== undefined;
     }
 
-    computeCoordinates(time)
+    computeCoordinates(time, applyCoordinates = true)
     {
         // Keplerian elements taken from NASA's https://ssd.jpl.nasa.gov/planets/approx_pos.html
         // time is expected in days since J2000.00
@@ -195,10 +216,12 @@ export default class planet
 
         this.computedPosition.set(a * (Math.cos(E) - e), 0, a * (Math.sqrt(1 - (e * e))) * Math.sin(E));
 
-        this.mesh.quaternion.setFromAxisAngle(this.rotationAxis, time * 2 * Math.PI / this.dayDuration);
-        this.mesh.quaternion.premultiply(this.tiltQuaternion);
-        if (this.clouds !== undefined) {
-            this.clouds.rotateY(0.000005*time);
+        if (applyCoordinates) {
+            this.mesh.quaternion.setFromAxisAngle(this.rotationAxis, time * 2 * Math.PI / this.dayDuration);
+            this.mesh.quaternion.premultiply(this.tiltQuaternion);
+            if (this.clouds !== undefined) {
+                this.clouds.rotateY(0.000005*time);
+            }
         }
     }
 
@@ -215,6 +238,8 @@ export default class planet
         else {
             this.mesh.position.copy(this.computedPosition);
         }
+        if (this.orbit.visible) this.orbitMaterial.opacity = 1 - uxFactor;
+
         this.realObject.position.copy(this.computedPosition);
         this.mesh.scale.set(size,size,size);
 

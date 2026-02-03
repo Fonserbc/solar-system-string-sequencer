@@ -72,7 +72,8 @@ let config = {
         saturnRingStart: 0.53,
         uranusRingSize: 2.3,
         uranusRingStart: 0.58,
-    }
+    },
+    orbitsVisible: false,
 }
 //#endregion
 
@@ -170,6 +171,29 @@ function checkWindowResize() {
         renderer.setSize(windowWidth, windowHeight, true);
         camera.aspect = windowWidth / windowHeight;
     }
+}
+//#endregion
+
+
+//#region Output
+function makeStringLonger(s, n, spacer = ' ')
+{
+    while (s.length < n) {
+        s = s + spacer;
+        if (s.length < n) {
+            s = spacer +s;
+        }
+    }
+    return s;a
+}
+function onNotePlayed(from, to, player, frequency)
+{
+    let notePlayed = Tone.Frequency(frequency);
+    let frequencyString = "";
+    if (frequency > 1) frequencyString = Math.round(frequency)+" Hz";
+    else frequencyString = Math.round(frequency*1000)+" mHz";
+    const l = 9;
+    console.log("("+makeStringLonger(from, l)+")"+makeStringLonger(player, l+2, '-')+"("+makeStringLonger(to, l)+")\t"+frequencyString+" ["+notePlayed.toNote()+"]");
 }
 //#endregion
 
@@ -450,7 +474,7 @@ function createString(i,j)
     let planetJReal = j == 0? sun : planets[j-1].realObject;
     let planetJVisual = j == 0? sun : planets[j-1].mesh;
     console.log("making string between", i, j);
-    let string = new stellarString(config, scene, planetIReal, planetJReal, white, allCares, planetIVisual, planetJVisual);
+    let string = new stellarString(config, scene, planetIReal, planetJReal, white, allCares, planetIVisual, planetJVisual, onNotePlayed);
     registerString(i, j, string);
 }
 
@@ -510,6 +534,13 @@ document.addEventListener('keydown', (ev) => {
     else if (ev.key == 'd')
     {
         toggleDebug();
+    }
+    else if (ev.key == 'o')
+    {
+        config.orbitsVisible = !config.orbitsVisible;
+        planets.forEach(planet => {
+            planet.orbit.visible = config.orbitsVisible;
+        });
     }
     else console.log(ev.key);
 });
@@ -669,6 +700,7 @@ function deformPositionBasedOnPlanets(pos)
         pos.normalize().multiplyScalar(prev.visualDistanceFromSun + f * visualDistanceBetweenOrbits);
     }
 }
+//#endregion
 
 //#region Update
 let mouseRaycaster = new THREE.Raycaster();
@@ -689,7 +721,16 @@ function animate() {
         uxfAnimTime += deltaTime/1000;
         let t = uxfAnimTime / config.ux.cameraAnimationTotalTime;
         config.ux.usabilityFactor = THREE.MathUtils.lerp(uxfAnimStart, uxfWannabe, THREE.MathUtils.smootherstep(t, 0, 1));
-        if (t >= 1) uxfAnimTime = -1;
+        if (t >= 1) {
+            uxfAnimTime = -1;
+            if (uxfWannabe == 1) {
+                config.orbitsVisible = false;
+                planets.forEach(planet => {
+                    planet.orbit.visible = config.orbitsVisible;
+                });
+            }
+        }
+        
     }
 
     let uf = config.ux.usabilityFactor;

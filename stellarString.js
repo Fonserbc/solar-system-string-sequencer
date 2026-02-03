@@ -18,7 +18,7 @@ export default class stellarString
      * Frequency = Velocity / 2Length
      */
 
-    constructor(config, scene, fromObject, toObject, color, planetsToCare, fromObjectVisual, toObjectVisual)
+    constructor(config, scene, fromObject, toObject, color, planetsToCare, fromObjectVisual, toObjectVisual, onPlayNote)
     {
         this.panner = new Tone.Panner3D({panningModel: "HRTF", distanceModel: "linear"}).toDestination();//
         this.panner.setPosition(fromObject.position.x, fromObject.position.y, fromObject.position.z);
@@ -32,6 +32,7 @@ export default class stellarString
         this.toVisual = toObjectVisual === undefined? this.to : toObjectVisual;
         this.planetsToCare = planetsToCare;
         this.lastPluckedTime = Tone.now();
+        this.onPlayNote = onPlayNote;
         //console.log(this.from, this.to, planetsToCare);
 
         let pointCount = this.pointCount = 128;
@@ -231,8 +232,9 @@ export default class stellarString
             if (simulationFrequency < 24000 && simulationFrequency > 16)
                 this.pluck.triggerAttack(simulationFrequency);
             else {
-                console.log(planet.name, "plucked string ["+this.from.name+" - "+this.to.name+"], resulting in a vibration frequency of", simulationFrequency);
+                //console.log(planet.name, "plucked string ["+this.from.name+" - "+this.to.name+"], resulting in a vibration frequency of", simulationFrequency);
             }
+            this.onPlayNote(this.from.name, this.to.name, planet.name, simulationFrequency);
             this.lastPluckedTime = now;
             let l = Math.pow(simulationFrequency / this.config.strings.fadeOutTimeFrequency, 0.33333333);
             this.pluckingTime = this.config.strings.fadeOutTime / l;
