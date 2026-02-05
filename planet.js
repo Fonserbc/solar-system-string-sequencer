@@ -217,10 +217,11 @@ export default class planet
         this.computedPosition.set(a * (Math.cos(E) - e), 0, a * (Math.sqrt(1 - (e * e))) * Math.sin(E));
 
         if (applyCoordinates) {
-            this.mesh.quaternion.setFromAxisAngle(this.rotationAxis, time * 2 * Math.PI / this.dayDuration);
+            let rotationAngle = time * 2 * Math.PI / this.dayDuration;
+            this.mesh.quaternion.setFromAxisAngle(this.rotationAxis, rotationAngle);
             this.mesh.quaternion.premultiply(this.tiltQuaternion);
             if (this.clouds !== undefined) {
-                this.clouds.rotateY(0.000005*time);
+                this.clouds.quaternion.setFromAxisAngle(this.rotationAxis,0.07*rotationAngle);
             }
         }
     }
