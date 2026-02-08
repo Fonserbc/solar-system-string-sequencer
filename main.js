@@ -390,10 +390,10 @@ venus.setKeplerianElements(0.72332102, -0.00000026, 0.00676399, -0.00005107, 3.3
 planets.push(venus);
 registerPlanetOnUi("venus", venus.mesh);
 
-let earth = new planet("terra", 6371.0084, 0x204dc0, scene, 23.5, 1, textureLoader, 'data/planets/earth.jpg');
-earth.setKeplerianElements(1.00000018, -0.00000003, 0.01673163, -0.00003661, -0.00054346, -0.01337178, 100.4669157, 35999.37306, 102.9300589, 0.3179526, -5.11260389, -0.24123856);
-planets.push(earth);
-registerPlanetOnUi("terra", earth.mesh);
+let terra = new planet("terra", 6371.0084, 0x204dc0, scene, 23.5, 1, textureLoader, 'data/planets/earth.jpg');
+terra.setKeplerianElements(1.00000018, -0.00000003, 0.01673163, -0.00003661, -0.00054346, -0.01337178, 100.4669157, 35999.37306, 102.9300589, 0.3179526, -5.11260389, -0.24123856);
+planets.push(terra);
+registerPlanetOnUi("terra", terra.mesh);
 
 let mars = new planet("mars", 3389.50, 0x993d00, scene, 25, 1.027, textureLoader, 'data/planets/mars.jpg');
 mars.setKeplerianElements(1.52371243, 0.00000097, 0.09336511, 0.00009149, 1.85181869, -0.00724757, -4.56813164, 19140.29934, -23.91744784, 0.45223625, 49.71320984, -0.26852431);
@@ -505,7 +505,7 @@ document.addEventListener('keydown', (ev) => {
     if (ev.key == '0') onPlanetSelectedUI("sun", sun);
     else if (ev.key == '1') onPlanetSelectedUI("mercury", mercury.mesh);
     else if (ev.key == '2') onPlanetSelectedUI("venus", venus.mesh);
-    else if (ev.key == '3') onPlanetSelectedUI("earth", earth.mesh);
+    else if (ev.key == '3') onPlanetSelectedUI("terra", terra.mesh);
     else if (ev.key == '4') onPlanetSelectedUI("mars", mars.mesh);
     else if (ev.key == '5') onPlanetSelectedUI("jupiter", jupiter.mesh);
     else if (ev.key == '6') onPlanetSelectedUI("saturn", saturn.mesh);
