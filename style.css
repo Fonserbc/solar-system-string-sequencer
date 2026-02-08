@@ -70,6 +70,7 @@ body {
     justify-content:left;
     margin-right: 2em;
     margin-left: 1em;
+    margin-top: 1em;
 }
 #time {
     margin-left: 0.5em;
@@ -84,7 +85,7 @@ body {
     display: flex;
     justify-content:right;
     bottom: 0;
-    right:1em;
+    right: 46px;
     font-size: 0.8em;
     color: gray;
 }

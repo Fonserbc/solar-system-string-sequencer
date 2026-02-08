@@ -38,7 +38,7 @@ export default class planet
         this.geometry = new SphereGeometry(1, 64);
 
         
-        if (name == "earth") {
+        if (name == "terra") {
             this.material = new MeshStandardMaterial(
             { color: color,
                 emissive: 0xffffff,
