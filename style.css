@@ -148,6 +148,19 @@ body {
   border-color: white;
 }
 
-#timeDesc {
+#timeHolder {
     width: 100%;
+}
+
+#timeDesc {
+    display: inline;
+}
+
+#currentTime {
+    right: 1rem;
+    position:relative;
+    width: auto;
+    color: gray;
+    display: inline;
+    float:right;
 }

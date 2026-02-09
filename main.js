@@ -425,6 +425,10 @@ let timeMS = Date.now();
 let accTimeMS = 0;
 let accTimeDays = 0;
 
+let timeDisplay = new Date();
+let timeDisplayDiv = document.getElementById("currentTime");
+let monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
 // const synth = new Tone.MonoSynth({
 //     oscillator: {
 //         type: "sawtooth"
@@ -874,5 +878,9 @@ function animate() {
     }
     
     stats.end();
+
+    timeDisplay.setTime(accTimeDays * 86400000 + 946727967000) // Convert accumulated days since J2000 to UTC ms timestamp (approx) // 946727967
+    timeDisplayDiv.textContent = timeDisplay.getDate() + " "+ monthNames[timeDisplay.getMonth()] + " "+ timeDisplay.getFullYear();//timeDisplay.toDateString();//.toLocaleDateString();
+
 }
 renderer.setAnimationLoop( animate );
