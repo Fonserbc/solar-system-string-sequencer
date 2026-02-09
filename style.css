@@ -41,6 +41,7 @@ body {
 
 #overlay-ui {
     margin-left: 1em;
+    height: 100%;
 }
 #canvas-container {
     width: 100%;
@@ -92,13 +93,11 @@ body {
 #actions p {
     margin-left: 1rem;
 }
-.hidden {
-    display: none;
-}
 #version {
     position: absolute;
-    top: 0;
-    right:1em;
+    bottom: 0;
+    left:0;
+    margin:0.5em;
     font-size: 0.8em;
     color: gray;
 }
@@ -163,4 +162,73 @@ body {
     color: gray;
     display: inline;
     float:right;
+}
+
+#timeline {
+    right:0;
+    width: calc(100% - 2em);
+    height: 50vh;
+    background-color: rgba(0,0,0,0.5);
+    bottom: 2.8em;
+    position: absolute;
+}
+
+#timelineStrings {
+    display: inline-block;
+    position:fixed;
+    right:0;
+    width: 82px;
+    /*background-color: rgba(255,255,255,0.5);*/
+    height: inherit;
+    border-left: 0.1rem solid white;
+}
+#timelineStringsContainer {
+    display: block;
+    height: calc(100% - 1.5em);
+}
+#timelineNotes {
+    float:right;
+    width: 100%;
+    height: 100%;
+    padding-right: 32px;
+    position: relative;
+    /*background-color: rgba(128,128,128,0.5);*/
+}
+.timelineNote {
+    animation-name: moveLeft;
+    animation-duration: 3.5s;
+    background-color: white;
+    height: 1.5em;
+    width: auto;
+    display: inline;
+    color: black;
+    padding-left: 0.5em;
+    padding-right: 0.5em;
+    position: relative;
+    float: right;
+    animation-timing-function: linear;
+    animation-iteration-count: 1;
+    animation-fill-mode: forwards;
+    right:0%;
+    /* top:50%; */
+}
+.timelineString {
+    background-image: linear-gradient(to right, red , yellow);
+    height: 1.5em;
+    /* top:50%; */
+    position:absolute;
+    text-align: center;
+}
+@keyframes moveLeft {
+    from {
+        right: 0%;
+    }
+    to {
+        right: 100%;
+        display: none;
+    }
+}
+
+.hidden {
+    display: none;
 }

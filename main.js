@@ -8,6 +8,7 @@ import * as Tone from 'tone';
 import stellarString from './stellarString';
 import starfield from './starfield';
 import Stats from 'stats.js';
+import timelineDisplay from './timelineDisplay';
 
 // SSSS - Solar System String Sequencer
 
@@ -176,25 +177,8 @@ function checkWindowResize() {
 
 
 //#region Output
-function makeStringLonger(s, n, spacer = ' ')
-{
-    while (s.length < n) {
-        s = s + spacer;
-        if (s.length < n) {
-            s = spacer +s;
-        }
-    }
-    return s;a
-}
-function onNotePlayed(from, to, player, frequency)
-{
-    let notePlayed = Tone.Frequency(frequency);
-    let frequencyString = "";
-    if (frequency > 1) frequencyString = Math.round(frequency)+" Hz";
-    else frequencyString = Math.round(frequency*1000)+" mHz";
-    const l = 9;
-    console.log("("+makeStringLonger(from, l)+")"+makeStringLonger(player, l+2, '-')+"("+makeStringLonger(to, l)+")\t"+frequencyString+" ["+notePlayed.toNote()+"]");
-}
+let timeline = new timelineDisplay();
+
 //#endregion
 
 //#region Stats & GUI
@@ -457,6 +441,7 @@ function registerString(i, j, string)
     if (stringsMap[j] == null) stringsMap[j] = {};
     stringsMap[i][j] = stringsMap[j][i] = string;
     strings.push(string);
+    timeline.addString(string);
 }
 function hasString(i, j)
 {
@@ -469,6 +454,7 @@ function removeString(i,j,string)
     strings.splice(strings.indexOf(string), 1);
     stringsMap[i][j] = null;
     stringsMap[j][i] = null;
+    timeline.removeString(string);
     string.dispose();
 }
 function createString(i,j)
@@ -478,7 +464,8 @@ function createString(i,j)
     let planetJReal = j == 0? sun : planets[j-1].realObject;
     let planetJVisual = j == 0? sun : planets[j-1].mesh;
     console.log("making string between", i, j);
-    let string = new stellarString(config, scene, planetIReal, planetJReal, white, allCares, planetIVisual, planetJVisual, onNotePlayed);
+    let string = new stellarString(config, scene, planetIReal, planetJReal, white, allCares, planetIVisual, planetJVisual, timeline.onNotePlayed);
+    string.name = `(${i}) -- (${j})`;
     registerString(i, j, string);
 }
 
@@ -545,6 +532,10 @@ document.addEventListener('keydown', (ev) => {
         planets.forEach(planet => {
             planet.orbit.visible = config.orbitsVisible;
         });
+    }
+    else if (ev.key == 't')
+    {
+        timeline.toggleShow();
     }
     else console.log(ev.key);
 });
@@ -637,6 +628,7 @@ function checkPointerInteraction() {
             lastClickedInteractable = closestInteractable;
 
             stringBeingBuild = new stellarString(config, scene, interactables[lastClickedInteractable], mousePluck, white, []);
+            
             if (uxfWannabe != 1) {
                 setUxFriendly(true);
             }
@@ -881,6 +873,8 @@ function animate() {
 
     timeDisplay.setTime(accTimeDays * 86400000 + 946727967000) // Convert accumulated days since J2000 to UTC ms timestamp (approx) // 946727967
     timeDisplayDiv.textContent = timeDisplay.getDate() + " "+ monthNames[timeDisplay.getMonth()] + " "+ timeDisplay.getFullYear();//timeDisplay.toDateString();//.toLocaleDateString();
+    
+    if (timeline.isShowing) timeline.update(strings);
 
 }
 renderer.setAnimationLoop( animate );

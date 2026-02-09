@@ -148,6 +148,7 @@ export default class stellarString
 
         this.planetsCrossProducts = [];
         this.deltaString = this.to.position.clone().sub(this.from.position);
+        this.length = this.deltaString.length();
         this.deltaPlanet = new THREE.Vector3();
         this.crossResult = new THREE.Vector3();
         this.projectionResult = new THREE.Vector3();
@@ -196,6 +197,7 @@ export default class stellarString
 
         this.deltaString.copy(this.to.position).sub(this.from.position);
         let stringLength = this.deltaString.length();
+        this.length = stringLength;
         for (let i = 0; i < this.planetsToCare.length; ++i)
         {
             if (this.planetsToCare[i] == this.from || this.planetsToCare[i] == this.to) continue;
@@ -234,7 +236,7 @@ export default class stellarString
             else {
                 //console.log(planet.name, "plucked string ["+this.from.name+" - "+this.to.name+"], resulting in a vibration frequency of", simulationFrequency);
             }
-            this.onPlayNote(this.from.name, this.to.name, planet.name, simulationFrequency);
+            this.onPlayNote(this, this.from.name, this.to.name, planet.name, simulationFrequency);
             this.lastPluckedTime = now;
             let l = Math.pow(simulationFrequency / this.config.strings.fadeOutTimeFrequency, 0.33333333);
             this.pluckingTime = this.config.strings.fadeOutTime / l;
