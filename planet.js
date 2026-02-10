@@ -66,6 +66,7 @@ export default class planet
         }
         this.mesh = new Mesh( this.geometry, this.material );
         this.mesh.name = name;
+        this.mesh.color = color;
         this.realObject = new Object3D();
         this.realObject.color = color;
         this.realObject.name = name;

@@ -149,6 +149,7 @@ export default class stellarString
         this.planetsCrossProducts = [];
         this.deltaString = this.to.position.clone().sub(this.from.position);
         this.length = this.deltaString.length();
+        this.frequency = this.computeFrequency(this.length);
         this.deltaPlanet = new THREE.Vector3();
         this.crossResult = new THREE.Vector3();
         this.projectionResult = new THREE.Vector3();
@@ -198,6 +199,8 @@ export default class stellarString
         this.deltaString.copy(this.to.position).sub(this.from.position);
         let stringLength = this.deltaString.length();
         this.length = stringLength;
+        this.frequency = this.computeFrequency(this.length);
+
         for (let i = 0; i < this.planetsToCare.length; ++i)
         {
             if (this.planetsToCare[i] == this.from || this.planetsToCare[i] == this.to) continue;
@@ -222,10 +225,15 @@ export default class stellarString
         this.uniforms.pluckedByRadius.value = 0.1/stringLength;
     }
 
+    computeFrequency(stringLength) {
+        let realFrequency = this.config.soundVelocity * c / AU / stringLength;
+        return realFrequency * 86400 * this.config.daysPerSecond;
+    }
+
     pluckedBy(planet, percentagePluck) {
-        let stringLength = this.from.position.distanceTo(this.to.position);
-        let frequency = this.config.soundVelocity * c / AU / stringLength;
-        let simulationFrequency = frequency * 86400 * this.config.daysPerSecond;
+        // let stringLength = this.from.position.distanceTo(this.to.position);
+        // let frequency = this.config.soundVelocity * c / AU / stringLength;
+        let simulationFrequency = this.frequency;//this.computeFrequency(stringLength);
 
         let now = Tone.now();
         if (now > this.lastPluckedTime) {
@@ -236,7 +244,7 @@ export default class stellarString
             else {
                 //console.log(planet.name, "plucked string ["+this.from.name+" - "+this.to.name+"], resulting in a vibration frequency of", simulationFrequency);
             }
-            this.onPlayNote(this, this.from.name, this.to.name, planet.name, simulationFrequency);
+            this.onPlayNote(this, this.from.name, this.to.name, planet, simulationFrequency);
             this.lastPluckedTime = now;
             let l = Math.pow(simulationFrequency / this.config.strings.fadeOutTimeFrequency, 0.33333333);
             this.pluckingTime = this.config.strings.fadeOutTime / l;

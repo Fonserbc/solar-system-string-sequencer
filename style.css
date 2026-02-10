@@ -59,8 +59,21 @@ body {
 }
 #planets {
     pointer-events: auto;
-    float:left;
+    /* float:left; */
     margin-left: 1em;
+    margin-right: 2em;
+    right: 0px;
+    gap: 2em;
+    display: flex;
+    justify-content: space-between;
+}
+.planet {
+    border-style: dotted;
+    border-width: 2px;
+    border-color:white;
+    flex-grow: 1;
+    width: 10em;
+    text-align: center;
 }
 .planet:hover {
     text-decoration: underline;
@@ -167,8 +180,7 @@ body {
 #timeline {
     right:0;
     width: calc(100% - 2em);
-    height: 50vh;
-    background-color: rgba(0,0,0,0.5);
+    height: 70vh;
     bottom: 2.8em;
     position: absolute;
 }
@@ -180,7 +192,8 @@ body {
     width: 82px;
     /*background-color: rgba(255,255,255,0.5);*/
     height: inherit;
-    border-left: 0.1rem solid white;
+    border: 0.1rem solid white;
+    background-color: rgba(0,0,0,0.3);
 }
 #timelineStringsContainer {
     display: block;
@@ -196,28 +209,42 @@ body {
 }
 .timelineNote {
     animation-name: moveLeft;
-    animation-duration: 3.5s;
+    animation-duration: 4.5s;
     background-color: white;
-    height: 1.5em;
+    height: 1.25em;
+    font-size: 1.5em;
     width: auto;
     display: inline;
     color: black;
+    font-weight: bold;
     padding-left: 0.5em;
     padding-right: 0.5em;
-    position: relative;
+    position: absolute;
     float: right;
     animation-timing-function: linear;
     animation-iteration-count: 1;
     animation-fill-mode: forwards;
     right:0%;
-    /* top:50%; */
+    top:100%;
+    will-change: transform, right;
 }
 .timelineString {
     background-image: linear-gradient(to right, red , yellow);
-    height: 1.5em;
+    height: 2.4em;
     /* top:50%; */
     position:absolute;
     text-align: center;
+    animation-name: getPlayed;
+    animation-duration: 2s;
+    animation-iteration-count: 1;
+    animation-timing-function: ease-in;
+    animation-fill-mode: forwards;
+    will-change: opacity;
+    width: 100%;
+}
+.timelineStringFrequency {
+    text-align: left;
+    height: 1.5em;
 }
 @keyframes moveLeft {
     from {
@@ -225,7 +252,15 @@ body {
     }
     to {
         right: 100%;
-        display: none;
+    }
+}
+
+@keyframes getPlayed {
+    from {
+        opacity: 1;
+    }
+    to {
+        opacity: 0.7;
     }
 }
 

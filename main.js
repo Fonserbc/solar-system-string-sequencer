@@ -304,7 +304,7 @@ sun.add(sunLight);
 scene.add( sun );
 scene.background = new THREE.Color(config.bg.backgroundColor);
 
-let selectedPlanetName = "sun";
+let selectedPlanetName = "";
 let selectedPlanet = sun;
 let selectedPlanetAnimTime = 0;
 let prevSelectedPlanet = sun;
@@ -331,8 +331,18 @@ function onPlanetSelectedUI(name, object3D)
 
     let i = idToName.indexOf(name);
     
-    document.getElementById(selectedPlanetName).textContent = "["+idToName.indexOf(selectedPlanetName)+"] "+selectedPlanetName;
-    document.getElementById(name).textContent = "< ["+i+"] "+name+" >";
+    if (selectedPlanetName != "") {
+        let oldPlanetDiv = document.getElementById(selectedPlanetName);
+        //oldPlanetDiv.textContent = "["+idToName.indexOf(selectedPlanetName)+"] "+selectedPlanetName;
+        oldPlanetDiv.style.borderStyle = "dotted";
+        oldPlanetDiv.style.borderWidth = "2px";
+    }
+    let planetDiv = document.getElementById(name);
+    //planetDiv.textContent = "< ["+i+"] "+name+" >";
+    planetDiv.style.borderStyle = "solid";
+    planetDiv.style.opacity = 1;
+    planetDiv.style.borderWidth = "4px";
+
     selectedPlanetName = name;
 
     prevSelectedPlanet = selectedPlanet;
@@ -346,9 +356,12 @@ function registerPlanetOnUi(name, object3D)
     let planetSelector = document.createElement("p");
     planetSelector.classList.add("planet");
     planetSelector.id = name;
-    if (selectedPlanetName == name)
+    if (false && selectedPlanetName == name)
         planetSelector.textContent = "< ["+i+"] "+name+" >";
     else planetSelector.textContent = "["+i+"] "+name;
+    let color = new THREE.Color(object3D.color);
+    planetSelector.style.borderColor = `#${color.getHexString()}`;
+    planetSelector.style.opacity = 0.7;
     planetSelector.addEventListener('pointerdown', () => onPlanetSelectedUI(name, object3D));
     document.getElementById("planets").appendChild(planetSelector);
 }
@@ -463,7 +476,7 @@ function createString(i,j)
     let planetIVisual = i == 0? sun : planets[i-1].mesh;
     let planetJReal = j == 0? sun : planets[j-1].realObject;
     let planetJVisual = j == 0? sun : planets[j-1].mesh;
-    console.log("making string between", i, j);
+    // console.log("making string between", i, j);
     let string = new stellarString(config, scene, planetIReal, planetJReal, white, allCares, planetIVisual, planetJVisual, timeline.onNotePlayed);
     string.name = `(${i}) -- (${j})`;
     registerString(i, j, string);
@@ -874,7 +887,7 @@ function animate() {
     timeDisplay.setTime(accTimeDays * 86400000 + 946727967000) // Convert accumulated days since J2000 to UTC ms timestamp (approx) // 946727967
     timeDisplayDiv.textContent = timeDisplay.getDate() + " "+ monthNames[timeDisplay.getMonth()] + " "+ timeDisplay.getFullYear();//timeDisplay.toDateString();//.toLocaleDateString();
     
-    if (timeline.isShowing) timeline.update(strings);
+    if (timeline.isShowing) timeline.update(strings, accTimeMS/1000);
 
 }
 renderer.setAnimationLoop( animate );
