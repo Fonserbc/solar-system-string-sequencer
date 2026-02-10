@@ -115,6 +115,8 @@ export default class timelineDisplay
 
         stringDiv.positionY = p;
         stringDiv.style.top = `calc(${p*100}% - ${p*2.4}em)`;
+        stringDiv.minLength = string.length;
+        stringDiv.maxLength = string.length;
         this.timelineStringsDiv.appendChild(stringDiv);
         this.stringsMap.set(string, stringDiv);
     }
@@ -142,9 +144,15 @@ export default class timelineDisplay
         if (!this.showing) return;
 
         this.height = this.timelineStringsDiv.offsetHeight;
+        this.minStringLength = 10000;
+        this.maxStringLength = 0;
         stringsList.forEach(string => {
-            this.minStringLength = Math.min(string.length, this.minStringLength);
-            this.maxStringLength = Math.max(string.length, this.maxStringLength);
+            let div = this.stringsMap.get(string);
+            div.minLength = Math.min(string.length, div.minLength);
+            div.maxLength = Math.max(string.length, div.minLength);
+
+            this.minStringLength = Math.min(div.minLength, this.minStringLength);
+            this.maxStringLength = Math.max(div.maxLength, this.maxStringLength);
         });
 
         stringsList.forEach(string => {

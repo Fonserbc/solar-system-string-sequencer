@@ -63,7 +63,7 @@ body {
     margin-left: 1em;
     margin-right: 2em;
     right: 0px;
-    gap: 2em;
+    gap: 1em;
     display: flex;
     justify-content: space-between;
 }
@@ -181,7 +181,7 @@ body {
     right:0;
     width: calc(100% - 2em);
     height: 70vh;
-    bottom: 2.8em;
+    bottom: 46px;
     position: absolute;
 }
 
