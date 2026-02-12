@@ -38,7 +38,7 @@ export default class stellarString
         let pointCount = this.pointCount = 128;
         this.points = new Float32Array(pointCount*3);
         this.vertices = new Float32Array(pointCount*2*3);
-        this.indices = new Int32Array((pointCount-1)*2*3);
+        this.indices = new Uint16Array((pointCount-1)*2*3);
         this.uv = new Float32Array(pointCount*2*2);
         let v = new THREE.Vector3();
         let stringUp = this.stringUp = this.to.position.clone().sub(this.from.position).normalize();

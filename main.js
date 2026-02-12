@@ -169,6 +169,7 @@ function checkWindowResize() {
         windowWidth = window.innerWidth;
         windowHeight = window.innerHeight;
 
+        renderer.setPixelRatio( window.devicePixelRatio );
         renderer.setSize(windowWidth, windowHeight, true);
         camera.aspect = windowWidth / windowHeight;
     }

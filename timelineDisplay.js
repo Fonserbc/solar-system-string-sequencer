@@ -32,7 +32,8 @@ export default class timelineDisplay
         this.notesList = [];
         this.notesStart = 0;
         this.notesEnd = 0;
-        for (let i = 0; i < 128; ++i)
+        const numberOfNoteDivs = 256;
+        for (let i = 0; i < numberOfNoteDivs; ++i)
         {
             let newNote = document.createElement("div");
             newNote.classList.add("timelineNote");
@@ -86,9 +87,9 @@ export default class timelineDisplay
     getFrequencyString(frequency)
     {
         let frequencyString = "";
-        if (frequency >= 10000) frequencyString = Math.round(frequency/1000)+" KHz";
-        else if (frequency > 1) frequencyString = Math.round(frequency)+" Hz";
-        else frequencyString = Math.round(frequency*1000)+" mHz";
+        if (frequency >= 10000) frequencyString = Math.round(frequency/1000)+"KHz";
+        else if (frequency > 1) frequencyString = Math.round(frequency)+"Hz";
+        else frequencyString = Math.round(frequency*1000)+"mHz";
         return `${frequencyString} ${Tone.Frequency(frequency).toNote()}`;
     }
     
