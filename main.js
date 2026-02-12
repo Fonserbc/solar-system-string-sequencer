@@ -121,10 +121,21 @@ const maxXCameraAngle = Math.PI*0.45;
 function moveCamera(ev) {
     let x = deltaPointerPosition.x*config.camera.rotatingSpeed/windowHeight;
     let y = deltaPointerPosition.y*config.camera.rotatingSpeed/windowHeight;
-    cameraAngles.x += y;
-    cameraAngles.x = THREE.MathUtils.clamp(cameraAngles.x + y, -maxXCameraAngle, maxXCameraAngle);
-    cameraAngles.y -= x;
 
+    if (config.ux.usabilityFactor < 0.5) {
+        cameraAngles.x = THREE.MathUtils.clamp(cameraAngles.x + y, -maxXCameraAngle, maxXCameraAngle);
+        cameraAngles.y -= x;
+    }
+    else {
+        if (pointerNormalizedPosition.x > 0) // right side
+            cameraAngles.y += y;
+        else cameraAngles.y -= y;
+
+        if (pointerNormalizedPosition.y > 0) cameraAngles.y += x; // top
+        else cameraAngles.y -= x;
+    }
+
+    
     cameraRotatingPivot.quaternion.setFromAxisAngle(VECTOR3.UP, cameraAngles.y);
     camUxfQuat.copy(cameraRotatingPivot.quaternion);
     camMovementQuat.setFromAxisAngle(VECTOR3.RIGHT, cameraAngles.x);
