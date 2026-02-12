@@ -118,6 +118,7 @@ let camUxfPos = new THREE.Vector3(0,config.ux.cameraHeight,0);
 let hasMovedCamera = false;
 let wasBuildingString = false;
 const maxXCameraAngle = Math.PI*0.45;
+let movedCameraAcc = 0;
 function moveCamera(ev) {
     let x = deltaPointerPosition.x*config.camera.rotatingSpeed/windowHeight;
     let y = deltaPointerPosition.y*config.camera.rotatingSpeed/windowHeight;
@@ -161,7 +162,8 @@ function moveCamera(ev) {
     // camMovementQuat.setFromAxisAngle(camMovementVec, y);
     // cameraRotatingPivot.quaternion.multiply(camMovementQuat);
     // cameraDistancePivot.quaternion.copy(cameraRotatingPivot.quaternion);
-    hasMovedCamera = true;
+    movedCameraAcc += (Math.abs(deltaPointerPosition.x) + Math.abs(deltaPointerPosition.y)) / windowHeight;
+    hasMovedCamera = movedCameraAcc > 0.003;
 }
 
 let needCheckResize = true;
@@ -681,6 +683,7 @@ canvas.addEventListener('pointermove', function(ev) {
 });
 canvas.addEventListener('pointerdown', function(ev) {
     pointerDown = true;
+    movedCameraAcc = 0;
     processPointer(ev);
     checkPointerInteraction();
 });
