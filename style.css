@@ -246,6 +246,16 @@ body {
     text-align: left;
     height: 1.5em;
 }
+#stringsTitle {
+    position: absolute;
+    top: -1.5em;
+    text-align: center;
+    width: 100%;
+}
+.stringDisplay {
+    display: inline;
+}
+
 @keyframes moveLeft {
     from {
         right: 0%;

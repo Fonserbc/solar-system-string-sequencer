@@ -18,7 +18,7 @@ export default class stellarString
      * Frequency = Velocity / 2Length
      */
 
-    constructor(config, scene, fromObject, toObject, color, planetsToCare, fromObjectVisual, toObjectVisual, onPlayNote)
+    constructor(config, scene, fromObject, toObject, color, planetsToCare, fromObjectVisual, toObjectVisual, onPlayNote, fromIt, toIt)
     {
         this.panner = new Tone.Panner3D({panningModel: "HRTF", distanceModel: "linear"}).toDestination();//
         this.panner.setPosition(fromObject.position.x, fromObject.position.y, fromObject.position.z);
@@ -33,6 +33,8 @@ export default class stellarString
         this.planetsToCare = planetsToCare;
         this.lastPluckedTime = Tone.now();
         this.onPlayNote = onPlayNote;
+        this.fromIt = fromIt;
+        this.toIt = toIt;
         //console.log(this.from, this.to, planetsToCare);
 
         let pointCount = this.pointCount = 128;

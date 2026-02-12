@@ -478,8 +478,7 @@ function createString(i,j)
     let planetJReal = j == 0? sun : planets[j-1].realObject;
     let planetJVisual = j == 0? sun : planets[j-1].mesh;
     // console.log("making string between", i, j);
-    let string = new stellarString(config, scene, planetIReal, planetJReal, white, allCares, planetIVisual, planetJVisual, timeline.onNotePlayed);
-    string.name = `(${i}) -- (${j})`;
+    let string = new stellarString(config, scene, planetIReal, planetJReal, white, allCares, planetIVisual, planetJVisual, timeline.onNotePlayed, i, j);
     registerString(i, j, string);
 }
 

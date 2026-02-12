@@ -13,6 +13,16 @@ function makeStringLonger(s, n, spacer = ' ')
 }
 let context = null;
 
+
+const stringDisplayStill = "————";
+
+const stringDisplayAnimation = [
+    "~~——",
+    "—~~—",
+    "——~~",
+    "—~~—"
+]
+
 export default class timelineDisplay
 {
     constructor() {
@@ -69,7 +79,8 @@ export default class timelineDisplay
         anim.play();
 
         let c = context.color.setHex(player.color).getHexString();
-        newNote.style.backgroundColor = `#${c}`;
+        let colorText = `#${c}`;
+        newNote.style.backgroundColor = colorText;
         let p = stringDiv.positionY;
         newNote.style.top = `calc(${p*100}% - ${p*1.25}em)`;
         // context.color2.set(1,1,1,1);
@@ -82,6 +93,9 @@ export default class timelineDisplay
         stringAnim.play();
         
         newNote.spawnTime = context.time;
+        stringDiv.displaySpan.style.color = colorText;
+        stringDiv.pluckedTime = context.time;
+        stringDiv.animating = true;
     }
 
     getFrequencyString(frequency)
@@ -100,13 +114,17 @@ export default class timelineDisplay
         let c2 = this.color.setHex(string.to.color).getHexString();
         let gradient = `linear-gradient(to right, #${c1} , #${c2})`;
         stringDiv.style.backgroundImage = gradient;
-        stringDiv.textContent = string.name;
+        stringDiv.innerHTML = `(${string.fromIt})<span class="stringDisplay">${stringDisplayStill}</span>(${string.toIt})`;
+        let stringDisplaySpan = stringDiv.getElementsByClassName("stringDisplay")[0];
+        stringDiv.displaySpan = stringDisplaySpan;
 
         let stringFrequency = document.createElement("div");
         stringFrequency.classList.add("timelineStringFrequency");
         stringDiv.frequencyDiv = stringFrequency;
         stringFrequency.textContent = this.getFrequencyString(string.frequency);
         stringDiv.appendChild(stringFrequency);
+        stringDiv.pluckedTime = 0;
+        stringDiv.animating = false;
 
         this.minStringLength = Math.min(string.length, this.minStringLength);
         this.maxStringLength = Math.max(string.length, this.maxStringLength);
@@ -162,6 +180,19 @@ export default class timelineDisplay
             div.positionY = p;
             div.style.top = `calc(${p*100}% - ${p*2.4}em)`;
             div.frequencyDiv.textContent = this.getFrequencyString(string.frequency);
+
+            if (div.animating) {
+                if (time - div.pluckedTime > 2)
+                {
+                    div.displaySpan.textContent = stringDisplayStill;
+                    div.animating = false;
+                    div.displaySpan.style.color = "white";
+                }
+                else {
+                    let i = Math.floor((time - div.pluckedTime)/2 * stringDisplayAnimation.length * 8);
+                    div.displaySpan.textContent = stringDisplayAnimation[i%stringDisplayAnimation.length];
+                }
+            }
         });
 
     }
