@@ -169,12 +169,13 @@ body {
 }
 
 #currentTime {
-    right: 1rem;
-    position:relative;
-    width: auto;
+    right: 0.5rem;
+    position: relative;
+    width: 6rem;
     color: gray;
     display: inline;
     float:right;
+    text-align: right;
 }
 
 #timeline {
