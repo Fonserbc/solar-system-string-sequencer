@@ -18,4 +18,4 @@ If we were able to build hypothetical musical strings between celestial bodies, 
 7. We hear strings plucks without delay when they happen regardless of our point of view.
 
 #### Other notes
-This project was a fast prototype and jam project made for Operator Digitalfest 2026() within a week, and then polished a bit more for release on itch.io
+This project was a fast prototype and jam project made for [Operator Digitalfest 2026](https://demozoo.org/parties/5442/) within a week, and then polished a bit more for release on itch.io
