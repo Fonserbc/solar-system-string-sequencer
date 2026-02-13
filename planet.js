@@ -45,7 +45,7 @@ export default class planet
                 emissiveIntensity: 0.1,
                 roughnessMap: textureLoader.load('data/planets/earthwatermap.jpg'),
                 roughness: 0.7,
-                emissiveMap: textureLoader.load('data/planets/earth_nighttime.jpg'),
+                emissiveMap: textureLoader.load('data/planets/earth_nighttime_custom.jpg'),
             });
             let cloudTexture = textureLoader.load('data/planets/earth_cloud.png');
             this.clouds = new Mesh(this.geometry,

@@ -228,7 +228,7 @@ export default class stellarString
     }
 
     computeFrequency(stringLength) {
-        let realFrequency = this.config.soundVelocity * c / AU / stringLength;
+        let realFrequency = this.config.soundVelocity * c / AU / (stringLength * 2);
         return realFrequency * 86400 * this.config.daysPerSecond;
     }
 

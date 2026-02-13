@@ -1,7 +1,7 @@
 import * as THREE from 'three/webgpu';
 import { EXRLoader } from 'three/addons/loaders/EXRLoader.js';
 import planet from './planet';
-import { AU } from './constants';
+import { AU, c } from './constants';
 import { lerp } from 'three/src/math/MathUtils';
 import * as dat from 'dat.gui';
 import * as Tone from 'tone';
