@@ -420,21 +420,25 @@ registerPlanetOnUi("mars", mars.mesh);
 
 let jupiter = new planet("jupiter", 69911, colors[planets.length + 1], scene, 3, 10/24, textureLoader, 'data/planets/jupiter.jpg');
 jupiter.setKeplerianElements(5.20248019, -0.00002864, 0.0485359, 0.00018026, 1.29861416, -0.00322699, 34.33479152, 3034.903718, 14.27495244, 0.18199196, 100.2928265, 0.13024619);
+jupiter.setAdditionalTerms(-0.00012452, 0.06064060, -0.35635438, 38.35125000);
 planets.push(jupiter);
 registerPlanetOnUi("jupiter", jupiter.mesh);
 
 let saturn = new planet("saturn", 58232, colors[planets.length + 1], scene, 26, 10.65/24, textureLoader, 'data/planets/saturn.jpg', undefined, 'data/planets/saturnring.png', config.rings.saturnRingSize, config.rings.saturnRingStart);
 saturn.setKeplerianElements(9.54149883, -0.00003065, 0.05550825, -0.00032044, 2.49424102, 0.00451969, 50.07571329, 1222.114947, 92.86136063, 0.54179478, 113.639987, -0.25015002);
+saturn.setAdditionalTerms(0.00025899, -0.13434469, 0.87320147, 38.35125000);
 planets.push(saturn);
 registerPlanetOnUi("saturn", saturn.mesh);
 
 let uranus = new planet("uranus", 25362, colors[planets.length + 1], scene, 97, 0.718055, textureLoader, 'data/planets/uranus.jpg', undefined, 'data/planets/uranusring.png', config.rings.uranusRingSize, config.rings.uranusRingStart);
 uranus.setKeplerianElements(19.18797948, -0.00020455, 0.0468574, -0.0000155, 0.77298127, -0.00180155, 314.2027663, 428.495126, 72.4340444, 0.09266985, 73.96250215, 0.05739699);
+uranus.setAdditionalTerms(0.00058331, -0.97731848, 0.17689245, 7.67025000);
 planets.push(uranus);
 registerPlanetOnUi("uranus", uranus.mesh);
 
 let neptune = new planet("neptune", 24622, colors[planets.length + 1], scene, 29.6, 16/24, textureLoader, 'data/planets/neptune.jpg');
 neptune.setKeplerianElements(30.06952752, 0.00006447, 0.00895439, 0.00000818, 1.7700552, 0.000224, 304.2228929, 218.4651531, 46.68158724, 0.01009938, 131.7863585, -0.00606302);
+neptune.setAdditionalTerms(-0.00041348, 0.68346318, -0.10162547, 7.67025000);
 planets.push(neptune);
 registerPlanetOnUi("neptune", neptune.mesh);
 
@@ -905,7 +909,9 @@ function animate() {
     
     stats.end();
 
-    timeDisplay.setTime(accTimeDays * 86400000 + 946727967000) // Convert accumulated days since J2000 to UTC ms timestamp (approx) // 946727967
+    let timeDaysShift = terra.offsetTime;// -5000 * 365; // start at 3000 BC
+
+    timeDisplay.setTime((accTimeDays + timeDaysShift) * 86400000 + 946727967000) // Convert accumulated days since J2000 to UTC ms timestamp (approx) // 946727967
     timeDisplayDiv.textContent = timeDisplay.getDate() + " "+ monthNames[timeDisplay.getMonth()] + " "+ timeDisplay.getFullYear();//timeDisplay.toDateString();//.toLocaleDateString();
     
     if (timeline.isShowing) timeline.update(strings, accTimeMS/1000);

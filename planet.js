@@ -19,6 +19,16 @@ function cosh(a) {
 }
 const CIRCLE = 2 * Math.PI;
 
+function daysSince2000 () {
+    const msPerDay = 24 * 60 * 60 * 1000;
+    const start = new Date(2000, 0, 1); // Months are 0-indexed.
+    const today = new Date();
+    const dstAdjust = today.getTimezoneOffset() - start.getTimezoneOffset();
+    let mSecsSinceStart = today.valueOf() - start.valueOf();
+    mSecsSinceStart += ((today.getTimezoneOffset() - dstAdjust) * 60 * 1000);
+    return mSecsSinceStart / msPerDay;
+}
+
 export default class planet
 {
     constructor(name, radius, color, scene, tilt, dayDuration, textureLoader, textureSrc, normalSrc, ringSrc, ringRelativeSize, ringStart)
@@ -34,9 +44,11 @@ export default class planet
         this.rotationAxis = new Vector3(0,1,0);
         this.tiltQuaternion.setFromAxisAngle(new Vector3(1,0,0), this.tilt);
         this.scene = scene;
+        this.lastComputedTime = 0;
 
         this.geometry = new SphereGeometry(1, 64);
 
+        this.offsetTime = daysSince2000();
         
         if (name == "terra") {
             this.material = new MeshStandardMaterial(
@@ -125,6 +137,17 @@ export default class planet
         this.visualDistanceFromSun = 1;
         //console.log(this);
         scene.add(this.mesh);
+
+
+        this.orbitCount = 360 + 1;
+        this.orbitPoints = new Float32Array(this.orbitCount*3);
+        this.orbitMaterial = new LineBasicMaterial({color: this.color, opacity: 1, transparent: true});
+        this.orbitBufferAttribute = new BufferAttribute(this.orbitPoints, 3);
+        this.orbitBufferGeometry = new BufferGeometry().setAttribute('position', this.orbitBufferAttribute);
+        this.orbit = new Line(this.orbitBufferGeometry, this.orbitMaterial);
+        this.scene.add(this.orbit);
+        this.orbit.visible = false;// degrees/century
+        this.lastComputedOrbitTime = -63500;
     }
 
     // Expected keplerian elements from: https://ssd.jpl.nasa.gov/planets/approx_pos.html
@@ -141,27 +164,7 @@ export default class planet
         this.longitudeOfPerihelion = lp0;   // degrees
         this._lp = lp;                      // degrees/century
         this.longitudeOfAscendingNode = o0; // degrees
-        this._o = o;    
-        
-        // Orbit
-        let orbitCount = 360 + 1;
-        this.orbitPoints = new Float32Array(orbitCount*3);
-
-        let orbitPeriod = (orbitCount-1) * 36525/L; // In dayso
-        let daysOrbitSample = orbitPeriod / (orbitCount-1);
-        
-        for (let i = 0; i < orbitCount; ++i)
-        {
-            this.computeCoordinates(daysOrbitSample * i, false);
-            this.orbitPoints[i*3] = this.computedPosition.x;
-            this.orbitPoints[i*3 + 1] = this.computedPosition.y;
-            this.orbitPoints[i*3 + 2] = this.computedPosition.z;
-        }
-
-        this.orbitMaterial = new LineBasicMaterial({color: this.color, opacity: 1, transparent: true});
-        this.orbit = new Line(new BufferGeometry().setAttribute('position', new BufferAttribute(this.orbitPoints, 3)), this.orbitMaterial);
-        this.scene.add(this.orbit);
-        this.orbit.visible = false;// degrees/century
+        this._o = o;
     }
 
     setAdditionalTerms(b, c, s, f) {
@@ -169,6 +172,22 @@ export default class planet
         this.c = c;
         this.s = s;
         this.f = f;
+    }
+
+    computeOrbitMesh() {
+        let orbitCount = this.orbitCount;
+        let orbitPeriod = (orbitCount-1) * 36525/this._L; // In days
+        let daysOrbitSample = orbitPeriod / (orbitCount-1);
+        
+        for (let i = 0; i < orbitCount; ++i)
+        {
+            this.computeCoordinates(this.lastComputedTime + daysOrbitSample * i, false);
+            this.orbitPoints[i*3] = this.computedPosition.x;
+            this.orbitPoints[i*3 + 1] = this.computedPosition.y;
+            this.orbitPoints[i*3 + 2] = this.computedPosition.z;
+        }
+
+        this.orbitBufferAttribute.needsUpdate = true;
     }
 
     hasAdditionalTerms() {
@@ -179,17 +198,18 @@ export default class planet
     {
         // Keplerian elements taken from NASA's https://ssd.jpl.nasa.gov/planets/approx_pos.html
         // time is expected in days since J2000.00
-        let T = time/36525;
+        let T = (time + this.offsetTime)/36525;
+        //T = Math.min(10, T); // maxing at year 3000~
 
         // 1: compute current values of the 6 elements
         // for our 2d simplification, I will only care about the changing mean longitude
         // Every other element will remain constant through time for our simplification
-        let a = this.semiMajorAxis;// + this._a * T;
-        let e = this.eccentricity;// + this._e * T;
-        let I = this.inclination;// + this._I * T;
+        let a = this.semiMajorAxis + this._a * T;
+        let e = this.eccentricity + this._e * T;
+        let I = this.inclination + this._I * T;
         let L = this.meanLongitude + this._L * T;
-        let lp = this.longitudeOfPerihelion;// + this._lp * T;
-        let o = this.longitudeOfAscendingNode;// + this._o * T;
+        let lp = this.longitudeOfPerihelion + this._lp * T;
+        let o = this.longitudeOfAscendingNode + this._o * T;
 
         // 2: compute perihelion w, and mean anomaly M
         let w = lp - o; // constant in our simplification
@@ -223,6 +243,13 @@ export default class planet
             this.mesh.quaternion.premultiply(this.tiltQuaternion);
             if (this.clouds !== undefined) {
                 this.clouds.quaternion.setFromAxisAngle(this.rotationAxis,0.07*rotationAngle);
+            }
+
+            this.lastComputedTime = time;
+            if (this.orbit.visible && Math.abs(time - this.lastComputedOrbitTime) > 3650)
+            {
+                this.computeOrbitMesh();
+                this.lastComputedOrbitTime = time;
             }
         }
     }

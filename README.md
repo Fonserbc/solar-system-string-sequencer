@@ -9,9 +9,9 @@ If we were able to build hypothetical musical strings between celestial bodies, 
 
 
 ### Simplifications
-1. For UX purposes, the sizes of the planets and the sun are only loosely related to their relative sizes.
-2. For the orbits of the planets I'm using [NASA's Keplerian elements](https://ssd.jpl.nasa.gov/planets/approx_pos.html), but I'm not computing changes over time of any element other than computing the mean longitude, because I want this simulation to go on forever.
-3. Time always starts at J2000.00 and moves forward.
+1. For usability reasons, the sizes of the planets and the sun are only loosely related to their relative sizes.
+2. For the orbits of the planets I'm using [NASA's Keplerian elements](https://ssd.jpl.nasa.gov/planets/approx_pos.html) meant for the time-interval 3000 BC -- 3000 AD
+3. Time always starts at the browsers local current time and moves forward.
 4. Strings don't break and are able to tense up in order for the wave within the string to travel through the string at the speed of light c.
 5. Through the pass of time and change of length of the strings (change of distances between planets), strings are able to maintain a constant speed of the wave within it.
 6. String plucking happens in a 2-dimensional simplified coordinate system: 3-dimensional coordinates are projected into the invariable plane of the solar system. Celestial bodies "pluck" strings when their projected center passes over a projected string.
