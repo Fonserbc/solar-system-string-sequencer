@@ -42,7 +42,9 @@ export default class planet
         this.dayDuration = dayDuration; // in earth days
         this.tiltQuaternion = new Quaternion();
         this.rotationAxis = new Vector3(0,1,0);
+        let auxQuat = new Quaternion().setFromAxisAngle(this.rotationAxis, Math.PI / 2);
         this.tiltQuaternion.setFromAxisAngle(new Vector3(1,0,0), this.tilt);
+        this.tiltQuaternion.premultiply(auxQuat); // I'm rotating 90 degrees to make earth's winter equinox corresponds to december in simulation time aproximately
         this.scene = scene;
         this.lastComputedTime = 0;
 
@@ -182,15 +184,22 @@ export default class planet
         
         for (let i = 0; i < orbitCount; ++i)
         {
-            this.computeCoordinates(this.lastComputedTime + daysOrbitSample * i, false);
-
-            if (uxFactor > 0) {
-                let p = this.meshPosition.copy(this.computedPosition).normalize().multiplyScalar(uxDistance);
-                this.computedPosition.lerp(p, uxFactor);
+            if (i == orbitCount - 1) { // make sure floating precision does not screw by just copying the last position to be the first
+                this.orbitPoints[i*3] = this.orbitPoints[0];
+                this.orbitPoints[i*3 + 1] = this.orbitPoints[1];
+                this.orbitPoints[i*3 + 2] = this.orbitPoints[2];
             }
-            this.orbitPoints[i*3] = this.computedPosition.x;
-            this.orbitPoints[i*3 + 1] = this.computedPosition.y;
-            this.orbitPoints[i*3 + 2] = this.computedPosition.z;
+            else {
+                this.computeCoordinates(this.lastComputedTime + daysOrbitSample * i, false);
+
+                if (uxFactor > 0) {
+                    let p = this.meshPosition.copy(this.computedPosition).normalize().multiplyScalar(uxDistance);
+                    this.computedPosition.lerp(p, uxFactor);
+                }
+                this.orbitPoints[i*3] = this.computedPosition.x;
+                this.orbitPoints[i*3 + 1] = this.computedPosition.y;
+                this.orbitPoints[i*3 + 2] = this.computedPosition.z;
+            }
         }
 
         this.orbitBufferAttribute.needsUpdate = true;

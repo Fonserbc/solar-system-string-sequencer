@@ -515,9 +515,10 @@ planets.forEach((p) => {
 });
 
 // mouse viz and debug
+let pointerViz = new THREE.Mesh( new THREE.SphereGeometry( 1.2, 64 ), new THREE.MeshBasicMaterial( { color: 0x00ff00, side: THREE.BackSide } ) );
 let mousePluck = new THREE.Object3D("mouse");
-mousePluck.add(new THREE.Mesh( new THREE.BoxGeometry( 0.1, 0.1, 0.1 ), new THREE.MeshBasicMaterial( { color: 0x00ff00 } ) ));
-mousePluck.children[0].visible = config.debug.mouseStatus;
+// mousePluck.add(pointerViz);
+// mousePluck.children[0].visible = config.debug.mouseStatus;
 scene.add( mousePluck );
 mousePluck.plucking = config.ux.doMousePluck;
 mousePluck.color = 0xffffff;
@@ -601,36 +602,40 @@ function processPointer(ev) {
     pointerWasDown = pointerDown;
 }
 
-let lastClickedInteractable = -1;
-function checkPointerInteraction() {
-    
+let pointerClosestInteractable = -1;
+let pointerClosestInteractableDistance = 10000000;
+function checkObjectBelowPointer()
+{
     mouseRaycaster.setFromCamera(pointerNormalizedPosition, camera);
 
-    let closestInteractable = -1;
-    let combinedDistance = 1000000000;
-    let hasClickedInteractable = false;
+    pointerClosestInteractable = -1;
+    pointerClosestInteractableDistance = 1000000000;
     for (let i = 0; i < interactables.length; ++i)
     {
         let d = mouseRaycaster.ray.distanceSqToPoint(interactables[i].position);
         let c = camera.position.distanceToSquared(interactables[i].position);
         //console.log(i, d, c, d / c);
-        if (d / c < combinedDistance)
+        if (d / c < pointerClosestInteractableDistance)
         {
-            combinedDistance = d / c;
-            closestInteractable = i;
+            pointerClosestInteractableDistance = d / c;
+            pointerClosestInteractable = i;
         }
     }
 
-    if (combinedDistance < 0.001)
-    {
-        hasClickedInteractable = true;
-    }
+    return pointerClosestInteractableDistance < 0.001;
+}
+
+let lastClickedInteractable = -1;
+function checkPointerInteraction() {
+    
+    let hasClickedInteractable = checkObjectBelowPointer();
+    let closestInteractable = pointerClosestInteractable;
 
     if (buildingString)
     {
         if (pointerDown && (!hasClickedInteractable || lastClickedInteractable == closestInteractable)) {
             buildingString = false;
-            console.log("cancelling string");
+            //console.log("cancelling string");
             stringBeingBuild.dispose();
             stringBeingBuild = null;
             lastClickedInteractable = -1;
@@ -641,7 +646,7 @@ function checkPointerInteraction() {
             if (pointerDown && alreadyString)
             {
                 removeString(lastClickedInteractable, closestInteractable, stringsMap[lastClickedInteractable][closestInteractable]);
-                console.log("removing string between", lastClickedInteractable, closestInteractable);
+                //console.log("removing string between", lastClickedInteractable, closestInteractable);
                 stringBeingBuild.dispose();
                 stringBeingBuild = null;
                 buildingString = false;
@@ -683,6 +688,23 @@ canvas.addEventListener('pointermove', function(ev) {
     if (pointerDown && !buildingString)
     {
         moveCamera(ev);
+        canvas.style.cursor = "auto";
+        pointerViz.removeFromParent();
+    }
+    else {
+        let thereIsObject = checkObjectBelowPointer();
+        if (thereIsObject) {
+            canvas.style.cursor = "pointer";
+
+            interactables[pointerClosestInteractable].add(pointerViz);
+            if (pointerClosestInteractable == 0) // sun
+                pointerViz.material.color.setHex(0xffffff);
+            else pointerViz.material.color.setHex(interactables[pointerClosestInteractable].color);
+        }
+        else {
+            canvas.style.cursor = "auto";
+            pointerViz.removeFromParent();
+        }
     }
 });
 canvas.addEventListener('pointerdown', function(ev) {
@@ -797,7 +819,7 @@ function animate() {
     config.strings.stringWidth = config.strings.width * cameraDistanceFactor;
 
     mousePluck.plucking = config.ux.doMousePluck;
-    mousePluck.children[0].visible = config.debug.mouseStatus;
+    //mousePluck.children[0].visible = config.debug.mouseStatus;
     mouseRaycaster.setFromCamera(pointerNormalizedPosition, camera);
     let mouseRes = mouseRaycaster.ray.intersectPlane(pointerInteractionPlane, mousePluck.position);
     // if (mouseRes == null) {
