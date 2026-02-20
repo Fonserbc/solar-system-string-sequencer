@@ -535,6 +535,39 @@ for (let i = 0; i < planets.length; ++i)
     allCares.push(planets[i].realObject);
 }
 
+function deleteAllStringsFromSelected() {
+    let i = idToName.indexOf(selectedPlanetName);
+    for (let j = 0; j < idToName.length; ++j)
+    {
+        if (i != j && hasString(i,j))
+            removeString(i,j,stringsMap[i][j]);
+    }
+}
+
+function addAllStringsFromSelected() {
+    let i = idToName.indexOf(selectedPlanetName);
+    for (let j = 0; j < idToName.length; ++j)
+    {
+        if (i != j && !hasString(i,j))
+            createString(i,j);
+    }
+}
+
+function toggleUxFriendly() {
+    setUxFriendly(uxfWannabe == 0? true : false);
+}
+
+function toggleOrbits() {
+    config.orbitsVisible = !config.orbitsVisible;
+    planets.forEach(planet => {
+        planet.orbit.visible = config.orbitsVisible;
+    });
+}
+
+function toggleTimeline() {
+    timeline.toggleShow();
+}
+
 //#region Keyboard Controls
 document.addEventListener('keydown', (ev) => {
     if (ev.key == '0') onPlanetSelectedUI("sun", sun);
@@ -547,24 +580,14 @@ document.addEventListener('keydown', (ev) => {
     else if (ev.key == '7') onPlanetSelectedUI("uranus", uranus.mesh);
     else if (ev.key == '8') onPlanetSelectedUI("neptune", neptune.mesh);
     else if (ev.key == 'Delete' || ev.key == 'Backspace') {
-        let i = idToName.indexOf(selectedPlanetName);
-        for (let j = 0; j < idToName.length; ++j)
-        {
-            if (i != j && hasString(i,j))
-                removeString(i,j,stringsMap[i][j]);
-        }
+        deleteAllStringsFromSelected();
     }
     else if (ev.key == 'a') {
-        let i = idToName.indexOf(selectedPlanetName);
-        for (let j = 0; j < idToName.length; ++j)
-        {
-            if (i != j && !hasString(i,j))
-                createString(i,j);
-        }
+        addAllStringsFromSelected();
     }
     else if (ev.key == ' ')
     {
-        setUxFriendly(uxfWannabe == 0? true : false);
+        toggleUxFriendly();
     }
     else if (ev.key == 'd')
     {
@@ -572,17 +595,20 @@ document.addEventListener('keydown', (ev) => {
     }
     else if (ev.key == 'o')
     {
-        config.orbitsVisible = !config.orbitsVisible;
-        planets.forEach(planet => {
-            planet.orbit.visible = config.orbitsVisible;
-        });
+        toggleOrbits();
     }
     else if (ev.key == 't')
     {
-        timeline.toggleShow();
+        toggleTimeline();
     }
-    else console.log(ev.key);
+    // else console.log(ev.key);
 });
+
+document.getElementById("delete").addEventListener("pointerdown", deleteAllStringsFromSelected);
+document.getElementById("orbit").addEventListener("pointerdown", toggleOrbits);
+document.getElementById("all").addEventListener("pointerdown", addAllStringsFromSelected);
+document.getElementById("space").addEventListener("pointerdown", toggleUxFriendly);
+document.getElementById("timelineToggle").addEventListener("pointerdown", toggleTimeline);
 //#endregion
 
 //#region Pointer interaction

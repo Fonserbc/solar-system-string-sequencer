@@ -79,6 +79,17 @@ body {
     text-decoration: underline;
     cursor: pointer;
 }
+.actions {
+    pointer-events: auto;
+    cursor:auto;
+    margin-left: 1rem;
+}
+.actions:hover {
+    text-decoration: underline;
+    cursor: pointer;
+    color: white;
+
+}
 #instructions {
     display: flex;
     justify-content:left;
@@ -94,7 +105,7 @@ body {
     width: 33%;
     margin-top: 0px;
 }
-#actions {
+#actionsContainer {
     position: absolute;
     display: flex;
     justify-content:right;
@@ -102,9 +113,6 @@ body {
     right: 46px;
     font-size: 0.8em;
     color: gray;
-}
-#actions p {
-    margin-left: 1rem;
 }
 #version {
     position: absolute;
