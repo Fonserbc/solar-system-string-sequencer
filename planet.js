@@ -55,11 +55,11 @@ export default class planet
             { color: color,
                 emissive: 0xffffff,
                 emissiveIntensity: 0.1,
-                roughnessMap: textureLoader.load('data/planets/earthwatermap.jpg'),
+                roughnessMap: textureLoader.load('public/planets/earthwatermap.jpg'),
                 roughness: 0.7,
-                emissiveMap: textureLoader.load('data/planets/earth_nighttime_custom.jpg'),
+                emissiveMap: textureLoader.load('public/planets/earth_nighttime_custom.jpg'),
             });
-            let cloudTexture = textureLoader.load('data/planets/earth_cloud.png');
+            let cloudTexture = textureLoader.load('public/planets/earth_cloud.png');
             this.clouds = new Mesh(this.geometry,
                 new MeshLambertMaterial({map: cloudTexture, alphaMap: cloudTexture, transparent: true, opacity: 0.5}));
         }
@@ -141,13 +141,14 @@ export default class planet
 
         this.orbitCount = 360 + 1;
         this.orbitPoints = new Float32Array(this.orbitCount*3);
-        this.orbitMaterial = new LineBasicMaterial({color: this.color, opacity: 1, transparent: true});
+        this.orbitMaterial = new LineBasicMaterial({color: this.color});//, opacity: 1, transparent: true
         this.orbitBufferAttribute = new BufferAttribute(this.orbitPoints, 3);
         this.orbitBufferGeometry = new BufferGeometry().setAttribute('position', this.orbitBufferAttribute);
         this.orbit = new Line(this.orbitBufferGeometry, this.orbitMaterial);
         this.scene.add(this.orbit);
-        this.orbit.visible = false;// degrees/century
+        this.orbit.visible = true;// degrees/century
         this.lastComputedOrbitTime = -63500;
+        this.wannaUpdateOrbit = true;
     }
 
     // Expected keplerian elements from: https://ssd.jpl.nasa.gov/planets/approx_pos.html
@@ -174,7 +175,7 @@ export default class planet
         this.f = f;
     }
 
-    computeOrbitMesh() {
+    computeOrbitMesh(uxFactor, uxDistance) {
         let orbitCount = this.orbitCount;
         let orbitPeriod = (orbitCount-1) * 36525/this._L; // In days
         let daysOrbitSample = orbitPeriod / (orbitCount-1);
@@ -182,6 +183,11 @@ export default class planet
         for (let i = 0; i < orbitCount; ++i)
         {
             this.computeCoordinates(this.lastComputedTime + daysOrbitSample * i, false);
+
+            if (uxFactor > 0) {
+                let p = this.meshPosition.copy(this.computedPosition).normalize().multiplyScalar(uxDistance);
+                this.computedPosition.lerp(p, uxFactor);
+            }
             this.orbitPoints[i*3] = this.computedPosition.x;
             this.orbitPoints[i*3 + 1] = this.computedPosition.y;
             this.orbitPoints[i*3 + 2] = this.computedPosition.z;
@@ -248,7 +254,7 @@ export default class planet
             this.lastComputedTime = time;
             if (this.orbit.visible && Math.abs(time - this.lastComputedOrbitTime) > 3650)
             {
-                this.computeOrbitMesh();
+                this.wannaUpdateOrbit = true;
                 this.lastComputedOrbitTime = time;
             }
         }
@@ -263,11 +269,12 @@ export default class planet
 
             this.meshPosition.copy(this.computedPosition).normalize().multiplyScalar(uxDistanceFromSun);
             this.mesh.position.lerpVectors(this.computedPosition, this.meshPosition, uxFactor);
+            this.wannaUpdateOrbit = true;
         }
         else {
             this.mesh.position.copy(this.computedPosition);
         }
-        if (this.orbit.visible) this.orbitMaterial.opacity = 1 - uxFactor;
+        // if (this.orbit.visible) this.orbitMaterial.opacity = 1 - uxFactor;
 
         this.realObject.position.copy(this.computedPosition);
         this.mesh.scale.set(size,size,size);
@@ -288,6 +295,11 @@ export default class planet
             let orbitRadius = this.mesh.position.length();
             this.uniforms.planetOrbit.value = orbitRadius;
             this.uniforms.planetOrbitSq.value = orbitRadius * orbitRadius;
+        }
+
+        if (this.wannaUpdateOrbit) {
+            this.computeOrbitMesh(uxFactor, uxDistanceFromSun);
+            this.wannaUpdateOrbit = false;
         }
     }
 }
