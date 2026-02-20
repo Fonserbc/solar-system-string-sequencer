@@ -75,6 +75,7 @@ let config = {
         uranusRingStart: 0.58,
     },
     orbitsVisible: true,
+    wantedOutlineScreenPercentage: 0.02,
 }
 //#endregion
 
@@ -229,6 +230,7 @@ uxGUI.add(config.ux, "marginPercentage", 0, 0.9);
 uxGUI.add(config.ux, "doMousePluck");
 uxGUI.add(config.ux, "planetsVsSpaceFactor", 0, 1);
 uxGUI.add(config.ux, "sunSizeMultiplier", 1, 10);
+uxGUI.add(config, "wantedOutlineScreenPercentage", 0.001, 0.3, 0.001);
 // let synthGUI = gui.addFolder("Synth");
 // synthGUI.add(config.synth, "attack", 0, 2);
 // synthGUI.add(config.synth, "decay", 0, 2);
@@ -515,7 +517,11 @@ planets.forEach((p) => {
 });
 
 // mouse viz and debug
-let pointerViz = new THREE.Mesh( new THREE.SphereGeometry( 1.2, 64 ), new THREE.MeshBasicMaterial( { color: 0x00ff00, side: THREE.BackSide } ) );
+let pointerViz = new THREE.Mesh( new THREE.SphereGeometry( 1, 64 ), new THREE.MeshBasicMaterial( { color: 0x00ff00, side: THREE.BackSide } ) );
+pointerViz.visible = false;
+scene.add(pointerViz);
+let pointerFollow = null;
+
 let mousePluck = new THREE.Object3D("mouse");
 // mousePluck.add(pointerViz);
 // mousePluck.children[0].visible = config.debug.mouseStatus;
@@ -689,21 +695,22 @@ canvas.addEventListener('pointermove', function(ev) {
     {
         moveCamera(ev);
         canvas.style.cursor = "auto";
-        pointerViz.removeFromParent();
+        pointerViz.visible = false;
     }
     else {
         let thereIsObject = checkObjectBelowPointer();
         if (thereIsObject) {
             canvas.style.cursor = "pointer";
 
-            interactables[pointerClosestInteractable].add(pointerViz);
+            pointerFollow = interactables[pointerClosestInteractable];
+            pointerViz.visible = true;
             if (pointerClosestInteractable == 0) // sun
                 pointerViz.material.color.setHex(0xffffff);
             else pointerViz.material.color.setHex(interactables[pointerClosestInteractable].color);
         }
         else {
             canvas.style.cursor = "auto";
-            pointerViz.removeFromParent();
+            pointerViz.visible = false;
         }
     }
 });
@@ -884,6 +891,20 @@ function animate() {
     strings.forEach((s) => {
         s.update(audioReady, accTimeMS, deltaTime, deformPositionBasedOnPlanets, camera);
     });
+
+    if (pointerViz.visible && pointerFollow != null) {
+        pointerViz.position.copy(pointerFollow.position);
+        let distance = uxfCameraPosition.copy(camera.position).sub(pointerViz.position).length();
+        let followSize = pointerFollow.scale.x;
+        let followSizeAngleOnScreen = Math.atan(followSize / distance) * THREE.MathUtils.RAD2DEG;
+        let followScreenPercentage = followSizeAngleOnScreen / (camera.fov / 2);
+
+        let wantedScreenPercentage = followScreenPercentage + config.wantedOutlineScreenPercentage;
+        let tan = Math.tan(wantedScreenPercentage * (camera.fov * THREE.MathUtils.DEG2RAD / 2));
+        let size = tan * distance;
+
+        pointerViz.scale.set(size, size, size);
+    }
 
     renderer.render( scene, camera );
 
