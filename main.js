@@ -318,7 +318,7 @@ const toneListenerUp = new THREE.Vector3();
 const starField = new starfield(config, scene);
 
 const textureLoader = new THREE.TextureLoader();
-const sun = new THREE.Mesh( new THREE.SphereGeometry( 1, 32), new THREE.MeshBasicMaterial( { color: 0xffffdd , map: textureLoader.load("public/planets/sun.png")} ));
+const sun = new THREE.Mesh( new THREE.SphereGeometry( 1, 32), new THREE.MeshBasicMaterial( { color: 0xffffdd , map: textureLoader.load("planets/sun.png")} ));
 sun.color = colors[0];
 sun.name = "sun";
 const sunRadius = 696340;
@@ -400,45 +400,45 @@ camera.lookAt(sun.position);
 
 let planets = [];
 
-let mercury = new planet("mercury", 2439.4, colors[planets.length + 1], scene, 2, 176, textureLoader, 'public/planets/mercury.jpg', 'public/planets/mercurynormal.jpg');
+let mercury = new planet("mercury", 2439.4, colors[planets.length + 1], scene, 2, 176, textureLoader, 'planets/mercury.jpg', 'planets/mercurynormal.jpg');
 mercury.setKeplerianElements(0.38709843, 0, 0.20563661, 0.00002123, 7.00559432, -0.00590158, 252.2516672, 149472.6749, 77.45771895, 0.15940013, 48.33961819, -0.12214182);
 planets.push(mercury);
 registerPlanetOnUi("mercury", mercury.mesh);
 
-let venus = new planet("venus", 6051.8, colors[planets.length + 1], scene, 177, 242, textureLoader, 'public/planets/venus.jpg');
+let venus = new planet("venus", 6051.8, colors[planets.length + 1], scene, 177, 242, textureLoader, 'planets/venus.jpg');
 venus.setKeplerianElements(0.72332102, -0.00000026, 0.00676399, -0.00005107, 3.39777545, 0.00043494, 181.9797085, 58517.8156, 131.7675571, 0.05679648, 76.67261496, -0.27274174);
 planets.push(venus);
 registerPlanetOnUi("venus", venus.mesh);
 
-let terra = new planet("terra", 6371.0084, colors[planets.length + 1], scene, 23.5, 1, textureLoader, 'public/planets/earth.jpg');
+let terra = new planet("terra", 6371.0084, colors[planets.length + 1], scene, 23.5, 1, textureLoader, 'planets/earth.jpg');
 terra.setKeplerianElements(1.00000018, -0.00000003, 0.01673163, -0.00003661, -0.00054346, -0.01337178, 100.4669157, 35999.37306, 102.9300589, 0.3179526, -5.11260389, -0.24123856);
 planets.push(terra);
 registerPlanetOnUi("terra", terra.mesh);
 
-let mars = new planet("mars", 3389.50, colors[planets.length + 1], scene, 25, 1.027, textureLoader, 'public/planets/mars.jpg');
+let mars = new planet("mars", 3389.50, colors[planets.length + 1], scene, 25, 1.027, textureLoader, 'planets/mars.jpg');
 mars.setKeplerianElements(1.52371243, 0.00000097, 0.09336511, 0.00009149, 1.85181869, -0.00724757, -4.56813164, 19140.29934, -23.91744784, 0.45223625, 49.71320984, -0.26852431);
 planets.push(mars);
 registerPlanetOnUi("mars", mars.mesh);
 
-let jupiter = new planet("jupiter", 69911, colors[planets.length + 1], scene, 3, 10/24, textureLoader, 'public/planets/jupiter.jpg');
+let jupiter = new planet("jupiter", 69911, colors[planets.length + 1], scene, 3, 10/24, textureLoader, 'planets/jupiter.jpg');
 jupiter.setKeplerianElements(5.20248019, -0.00002864, 0.0485359, 0.00018026, 1.29861416, -0.00322699, 34.33479152, 3034.903718, 14.27495244, 0.18199196, 100.2928265, 0.13024619);
 jupiter.setAdditionalTerms(-0.00012452, 0.06064060, -0.35635438, 38.35125000);
 planets.push(jupiter);
 registerPlanetOnUi("jupiter", jupiter.mesh);
 
-let saturn = new planet("saturn", 58232, colors[planets.length + 1], scene, 26, 10.65/24, textureLoader, 'public/planets/saturn.jpg', undefined, 'public/planets/saturnring.png', config.rings.saturnRingSize, config.rings.saturnRingStart);
+let saturn = new planet("saturn", 58232, colors[planets.length + 1], scene, 26, 10.65/24, textureLoader, 'planets/saturn.jpg', undefined, 'planets/saturnring.png', config.rings.saturnRingSize, config.rings.saturnRingStart);
 saturn.setKeplerianElements(9.54149883, -0.00003065, 0.05550825, -0.00032044, 2.49424102, 0.00451969, 50.07571329, 1222.114947, 92.86136063, 0.54179478, 113.639987, -0.25015002);
 saturn.setAdditionalTerms(0.00025899, -0.13434469, 0.87320147, 38.35125000);
 planets.push(saturn);
 registerPlanetOnUi("saturn", saturn.mesh);
 
-let uranus = new planet("uranus", 25362, colors[planets.length + 1], scene, 97, 0.718055, textureLoader, 'public/planets/uranus.jpg', undefined, 'public/planets/uranusring.png', config.rings.uranusRingSize, config.rings.uranusRingStart);
+let uranus = new planet("uranus", 25362, colors[planets.length + 1], scene, 97, 0.718055, textureLoader, 'planets/uranus.jpg', undefined, 'planets/uranusring.png', config.rings.uranusRingSize, config.rings.uranusRingStart);
 uranus.setKeplerianElements(19.18797948, -0.00020455, 0.0468574, -0.0000155, 0.77298127, -0.00180155, 314.2027663, 428.495126, 72.4340444, 0.09266985, 73.96250215, 0.05739699);
 uranus.setAdditionalTerms(0.00058331, -0.97731848, 0.17689245, 7.67025000);
 planets.push(uranus);
 registerPlanetOnUi("uranus", uranus.mesh);
 
-let neptune = new planet("neptune", 24622, colors[planets.length + 1], scene, 29.6, 16/24, textureLoader, 'public/planets/neptune.jpg');
+let neptune = new planet("neptune", 24622, colors[planets.length + 1], scene, 29.6, 16/24, textureLoader, 'planets/neptune.jpg');
 neptune.setKeplerianElements(30.06952752, 0.00006447, 0.00895439, 0.00000818, 1.7700552, 0.000224, 304.2228929, 218.4651531, 46.68158724, 0.01009938, 131.7863585, -0.00606302);
 neptune.setAdditionalTerms(-0.00041348, 0.68346318, -0.10162547, 7.67025000);
 planets.push(neptune);
@@ -647,9 +647,25 @@ document.addEventListener('keydown', (ev) => {
     }
     else if (ev.key == 'm')
     {
-        requestMidi();
+        requestMIDI();
     }
-    // else console.log(ev.key);
+    else if (ev.key == 'ArrowLeft')
+    {
+
+    }
+    else if (ev.key == 'ArrowRight')
+    {
+
+    }
+    else if (ev.key == 'ArrowDown')
+    {
+
+    }
+    else if (ev.key == 'ArrowUp')
+    {
+
+    }
+    //else console.log(ev.key);
 });
 
 document.getElementById("delete").addEventListener("pointerdown", deleteAllStringsFromSelected);

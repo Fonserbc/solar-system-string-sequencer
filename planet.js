@@ -57,11 +57,11 @@ export default class planet
             { color: color,
                 emissive: 0xffffff,
                 emissiveIntensity: 0.1,
-                roughnessMap: textureLoader.load('public/planets/earthwatermap.jpg'),
+                roughnessMap: textureLoader.load('planets/earthwatermap.jpg'),
                 roughness: 0.7,
-                emissiveMap: textureLoader.load('public/planets/earth_nighttime_custom.jpg'),
+                emissiveMap: textureLoader.load('planets/earth_nighttime_custom.jpg'),
             });
-            let cloudTexture = textureLoader.load('public/planets/earth_cloud.png');
+            let cloudTexture = textureLoader.load('planets/earth_cloud.png');
             this.clouds = new Mesh(this.geometry,
                 new MeshLambertMaterial({map: cloudTexture, alphaMap: cloudTexture, transparent: true, opacity: 0.5}));
         }
