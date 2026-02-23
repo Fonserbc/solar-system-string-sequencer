@@ -497,6 +497,18 @@ function removeString(i,j,string)
     timeline.removeString(string);
     string.dispose();
 }
+function onNotePlayed (string, fromName, toName, player, simulationFrequency) {
+    if (currentMidiOutput != null)
+    {
+        let notePlayed = Tone.Frequency(simulationFrequency);
+        let midiNote = Tone.Frequency(simulationFrequency).toMidi();
+        if (midiNote >= 0 && midiNote < 128)
+            currentMidiOutput.send([0x90, notePlayed.toMidi(), 0x40]) // NoteOn, Note, Velocity
+    }
+
+    timeline.onNotePlayed(string, fromName, toName, player, simulationFrequency);
+
+}
 function createString(i,j)
 {
     let planetIReal = i == 0? sun : planets[i-1].realObject;
@@ -504,7 +516,7 @@ function createString(i,j)
     let planetJReal = j == 0? sun : planets[j-1].realObject;
     let planetJVisual = j == 0? sun : planets[j-1].mesh;
     // console.log("making string between", i, j);
-    let string = new stellarString(config, scene, planetIReal, planetJReal, white, allCares, planetIVisual, planetJVisual, timeline.onNotePlayed, i, j);
+    let string = new stellarString(config, scene, planetIReal, planetJReal, white, allCares, planetIVisual, planetJVisual, onNotePlayed, i, j);
     registerString(i, j, string);
 }
 
@@ -568,6 +580,38 @@ function toggleTimeline() {
     timeline.toggleShow();
 }
 
+let currentMidiOutput = null;
+async function requestMIDI() {
+  const access = await navigator.requestMIDIAccess();
+  const outputs = access.outputs.values();
+  if (outputs.size == 0)
+  {
+    console.log("no midi outputs found");
+  }
+  else {
+    document.getElementById("midi").classList.add("hidden");
+    let midiOutputsDiv = document.getElementById("outputs");
+    midiOutputsDiv.classList.remove("hidden");
+
+    outputs.forEach((o) =>
+    {
+        let outputDiv = document.createElement("p");
+        outputDiv.classList.add("actions");
+        outputDiv.textContent = `output midi to ${o.name}`;
+        outputDiv.addEventListener("pointerdown", () => {
+            o.open().then(() => {
+                if (currentMidiOutput != null)
+                    currentMidiOutput.close();
+                currentMidiOutput = o;
+                outputDiv.textContent = `sending midi to ${o.name}`;
+            });
+        });
+        midiOutputsDiv.appendChild(outputDiv);
+    });
+  }
+}
+
+
 //#region Keyboard Controls
 document.addEventListener('keydown', (ev) => {
     if (ev.key == '0') onPlanetSelectedUI("sun", sun);
@@ -601,6 +645,10 @@ document.addEventListener('keydown', (ev) => {
     {
         toggleTimeline();
     }
+    else if (ev.key == 'm')
+    {
+        requestMidi();
+    }
     // else console.log(ev.key);
 });
 
@@ -609,6 +657,7 @@ document.getElementById("orbit").addEventListener("pointerdown", toggleOrbits);
 document.getElementById("all").addEventListener("pointerdown", addAllStringsFromSelected);
 document.getElementById("space").addEventListener("pointerdown", toggleUxFriendly);
 document.getElementById("timelineToggle").addEventListener("pointerdown", toggleTimeline);
+document.getElementById("midi").addEventListener("pointerdown", requestMIDI);
 //#endregion
 
 //#region Pointer interaction

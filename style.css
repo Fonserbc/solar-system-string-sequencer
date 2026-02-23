@@ -83,12 +83,18 @@ body {
     pointer-events: auto;
     cursor:auto;
     margin-left: 1rem;
+    display: flex;
+    justify-content: flex-end;
+    align-items: flex-end;
 }
 .actions:hover {
     text-decoration: underline;
     cursor: pointer;
     color: white;
-
+}
+#outputs {
+    pointer-events: auto;
+    cursor:auto;
 }
 #instructions {
     display: flex;
