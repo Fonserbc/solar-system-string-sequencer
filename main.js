@@ -76,6 +76,7 @@ let config = {
     },
     orbitsVisible: true,
     wantedOutlineScreenPercentage: 0.02,
+    midiNotesTime: Math.PI * 2,
 }
 //#endregion
 
@@ -136,7 +137,6 @@ function moveCamera(ev) {
         if (pointerNormalizedPosition.y > 0) cameraAngles.y += x; // top
         else cameraAngles.y -= x;
     }
-
     
     cameraRotatingPivot.quaternion.setFromAxisAngle(VECTOR3.UP, cameraAngles.y);
     camUxfQuat.copy(cameraRotatingPivot.quaternion);
@@ -156,13 +156,6 @@ function moveCamera(ev) {
         camUxfPos.y = -config.ux.cameraHeight;
     }
 
-    // camMovementVec.copy(VECTOR3.DOWN);//.applyQuaternion(cameraRotatingPivot.quaternion);
-    // camMovementQuat.setFromAxisAngle(camMovementVec, x);
-    // cameraRotatingPivot.quaternion.multiply(camMovementQuat);
-    // camMovementVec.copy(VECTOR3.RIGHT);//.applyQuaternion(cameraRotatingPivot.quaternion);
-    // camMovementQuat.setFromAxisAngle(camMovementVec, y);
-    // cameraRotatingPivot.quaternion.multiply(camMovementQuat);
-    // cameraDistancePivot.quaternion.copy(cameraRotatingPivot.quaternion);
     movedCameraAcc += (Math.abs(deltaPointerPosition.x) + Math.abs(deltaPointerPosition.y)) / windowHeight;
     hasMovedCamera = movedCameraAcc > 0.003;
 }
@@ -191,7 +184,7 @@ function checkWindowResize() {
 //#endregion
 
 
-//#region Output
+//#region Timeline Display
 let timeline = new timelineDisplay();
 
 //#endregion
@@ -231,12 +224,6 @@ uxGUI.add(config.ux, "doMousePluck");
 uxGUI.add(config.ux, "planetsVsSpaceFactor", 0, 1);
 uxGUI.add(config.ux, "sunSizeMultiplier", 1, 10);
 uxGUI.add(config, "wantedOutlineScreenPercentage", 0.001, 0.3, 0.001);
-// let synthGUI = gui.addFolder("Synth");
-// synthGUI.add(config.synth, "attack", 0, 2);
-// synthGUI.add(config.synth, "decay", 0, 2);
-// synthGUI.add(config.synth, "sustain", 0, 1);
-// synthGUI.add(config.synth, "release", 0, 2);
-// synthGUI.add(config.synth, "volume", 0, 1);
 let pluckGUI = gui.addFolder("Pluck");
 pluckGUI.add(config.pluck, "attackNoise", 0.1, 1.5, 0.05);
 pluckGUI.add(config.pluck, "dampening", 0, 7000);
@@ -252,11 +239,7 @@ stringGUI.add(config.strings, "fadeOutTimeFrequency", 50, 10000, 1);
 stringGUI.add(config.strings, "coloredEdge", 0, 3, 0.01);
 stringGUI.add(config.strings, "coloredEdgeStart", 0, 3, 0.01);
 stringGUI.addColor(config.strings, "stringColor");
-// let ringsGUI = gui.addFolder("rings");
-// ringsGUI.add(config.rings, "saturnRingSize", 0, 4);
-// ringsGUI.add(config.rings, "saturnRingStart", 0, 1, 0.01);
-// ringsGUI.add(config.rings, "uranusRingSize", 0, 4);
-// ringsGUI.add(config.rings, "uranusRingStart", 0, 1, 0.01);
+gui.add(config, "midiNotesTime", 0.01, 10, 0.01);
 gui.close();
 
 function toggleDebug() {
@@ -352,7 +335,7 @@ function onPlanetSelectedUI(name, object3D)
     setUxFriendly(false);
     if (selectedPlanetName == name) return;
 
-    let i = idToName.indexOf(name);
+    //let i = nameToId[name];
     
     if (selectedPlanetName != "") {
         let oldPlanetDiv = document.getElementById(selectedPlanetName);
@@ -379,9 +362,7 @@ function registerPlanetOnUi(name, object3D)
     let planetSelector = document.createElement("p");
     planetSelector.classList.add("planet");
     planetSelector.id = name;
-    if (false && selectedPlanetName == name)
-        planetSelector.textContent = "< ["+i+"] "+name+" >";
-    else planetSelector.textContent = "["+i+"] "+name;
+    planetSelector.textContent = `[${i}] ${name}`;
     let color = new THREE.Color(object3D.color);
     planetSelector.style.borderColor = `#${color.getHexString()}`;
     planetSelector.style.opacity = 0.7;
@@ -390,7 +371,6 @@ function registerPlanetOnUi(name, object3D)
 }
 
 registerPlanetOnUi("sun", sun);
-
 onPlanetSelectedUI("sun", sun);
 
 
@@ -500,10 +480,11 @@ function removeString(i,j,string)
 function onNotePlayed (string, fromName, toName, player, simulationFrequency) {
     if (currentMidiOutput != null)
     {
-        let notePlayed = Tone.Frequency(simulationFrequency);
         let midiNote = Tone.Frequency(simulationFrequency).toMidi();
-        if (midiNote >= 0 && midiNote < 128)
-            currentMidiOutput.send([0x90, notePlayed.toMidi(), 0x40]) // NoteOn, Note, Velocity
+        if (midiNote >= 0 && midiNote < 128) {
+            currentMidiOutput.send([0x90, midiNote, 0x40]) // NoteOn, Note, Velocity
+            registerMidiForRelease(midiNote);
+        }
     }
 
     timeline.onNotePlayed(string, fromName, toName, player, simulationFrequency);
@@ -581,6 +562,16 @@ function toggleTimeline() {
 }
 
 let currentMidiOutput = null;
+
+let playedMidiNote = new Uint16Array(256);
+let playedMidiNoteTime = new Float32Array(256);
+let midiNotesStart = 0;
+let midiNotesEnd = 0;
+function registerMidiForRelease(midiNote) {
+    playedMidiNote[midiNotesEnd] = midiNote;
+    playedMidiNoteTime[midiNotesEnd] = accTimeMS/1000;
+    midiNotesEnd = (midiNotesEnd + 1)%playedMidiNote.length;
+}
 async function requestMIDI() {
   const access = await navigator.requestMIDIAccess();
   const outputs = access.outputs.values();
@@ -857,6 +848,7 @@ function deformPositionBasedOnPlanets(pos)
 //#endregion
 
 //#region Update
+// UXF stands for UX-friendly
 let mouseRaycaster = new THREE.Raycaster();
 let pointerInteractionPlane = new THREE.Plane(new THREE.Vector3(0,1, 0), 0);
 let uxfCameraPosition = new THREE.Vector3();
@@ -877,18 +869,10 @@ function animate() {
         config.ux.usabilityFactor = THREE.MathUtils.lerp(uxfAnimStart, uxfWannabe, THREE.MathUtils.smootherstep(t, 0, 1));
         if (t >= 1) {
             uxfAnimTime = -1;
-            if (uxfWannabe == 1) {
-                // config.orbitsVisible = false;
-                // planets.forEach(planet => {
-                //     planet.orbit.visible = config.orbitsVisible;
-                // });
-            }
         }
-        
     }
 
     let uf = config.ux.usabilityFactor;
-
     if (selectedPlanetAnimTime >= 0)
     {
         selectedPlanetAnimTime += deltaTime/1000;
@@ -899,15 +883,11 @@ function animate() {
     else cameraRotatingPivot.position.copy(selectedPlanet.position);
 
     cameraDistancePivot.position.z = config.camera.distance;
-    // uxfCameraPosition.copy(camUxfPos);
 
     cameraDistancePivot.getWorldPosition(camera.position);
     camera.position.lerp(camUxfPos, uf);
     camera.quaternion.copy(cameraDistancePivot.quaternion);
     camera.quaternion.slerp(camUxfQuat, uf);
-    // uxfCameraQuaternion.copy(camera.quaternion);
-    // camera.quaternion.slerpQuaternions(cameraDistancePivot.quaternion, uxfCameraQuaternion, uf);
-    //camera.lookAt(sun.position);
     camera.fov = config.camera.fov;
     camera.updateMatrixWorld();
     camera.updateProjectionMatrix();    
@@ -917,20 +897,13 @@ function animate() {
     config.strings.stringWidth = config.strings.width * cameraDistanceFactor;
 
     mousePluck.plucking = config.ux.doMousePluck;
-    //mousePluck.children[0].visible = config.debug.mouseStatus;
     mouseRaycaster.setFromCamera(pointerNormalizedPosition, camera);
-    let mouseRes = mouseRaycaster.ray.intersectPlane(pointerInteractionPlane, mousePluck.position);
-    // if (mouseRes == null) {
-    //     console.error("didn't intersect with plane!");
-    // }
-    //mousePluck.position.set(mousePosition.x/windowWidth - 0.5, 0, mousePosition.y/windowHeight - 0.5);
+    mouseRaycaster.ray.intersectPlane(pointerInteractionPlane, mousePluck.position); // this sets the mousePluck position, used by when building strings to visualize
 
     sunLight.intensity = config.sun.intensity;
 
     let cameraHalfHeight = camera.position.y * Math.tan(config.camera.fov * 0.5 * THREE.MathUtils.DEG2RAD);
     let cameraHalfWidth = cameraHalfHeight * safeAR;
-    // mousePluck.position.x *= cameraHalfWidth * 2;
-    // mousePluck.position.z *= cameraHalfHeight * 2;
 
     let maxUxRadius = cameraHalfHeight;
     if (safeAR < 1) {
@@ -1010,35 +983,6 @@ function animate() {
         toneListener.upX.value = camera.up.x;
         toneListener.upY.value = camera.up.y;
         toneListener.upZ.value = camera.up.z;
-        
-        // synthCountdown -= deltaTime;
-        // let period = 2000;
-
-        // synth.setNote(config.frequency);
-
-        // if (synthCountdown <= 0)
-        // {
-        //     synthCounter++;
-        //     if (synthCounter % 2 == 0) {
-        //         synth2.attackNoise = config.pluck.attackNoise;
-        //         synth2.dampening = config.pluck.dampening;
-        //         synth2.resonance = config.pluck.resonance;
-        //         synth2.release = config.pluck.release;
-        //         synth2.triggerAttack(config.frequency);
-        //         synth.envelope.attack = config.synth.attack;
-        //         synth.envelope.decay = config.synth.decay;
-        //         synth.envelope.sustain = config.synth.sustain;
-        //         synth.envelope.release = config.synth.release;
-        //         synth.volume.value = config.synth.volume;
-        //         //synth.triggerAttackRelease(config.frequency, "8n");
-        //     }
-        //     else {
-        //         synth2.triggerRelease();
-        //         //synth.triggerRelease();
-        //     }
-        //     synthCountdown += period;
-        //     if (synthCountdown < 0) synthCountdown = period;
-        // }
     }
     
     stats.end();
@@ -1050,5 +994,19 @@ function animate() {
     
     if (timeline.isShowing) timeline.update(strings, accTimeMS/1000);
 
+    if (midiNotesStart != midiNotesEnd)
+    {
+        let t = accTimeMS / 1000;
+        let midiIsConnected = currentMidiOutput != null;
+        while (midiNotesStart != midiNotesEnd && t - playedMidiNoteTime[midiNotesStart] >= config.midiNotesTime)
+        {
+            if (midiIsConnected)
+            {
+                currentMidiOutput.send([0x80, playedMidiNote[midiNotesStart], 0x40]) // NoteOff, Note, Velocity
+                // currentMidiOutput.send([0x90, playedMidiNote[midiNotesStart], 0x00]) // NoteOn, Note, Velocity (0) // same as a NoteOff
+            }
+            midiNotesStart = (midiNotesStart + 1)%playedMidiNote.length;
+        }
+    }
 }
 renderer.setAnimationLoop( animate );
