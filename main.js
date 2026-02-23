@@ -460,6 +460,7 @@ function registerString(i, j, string)
     if (stringsMap[i] == null) stringsMap[i] = {};
     if (stringsMap[j] == null) stringsMap[j] = {};
     stringsMap[i][j] = stringsMap[j][i] = string;
+    string.midi = {playing: false, note: 0, time:0};
     strings.push(string);
     timeline.addString(string);
 }
@@ -482,8 +483,15 @@ function onNotePlayed (string, fromName, toName, player, simulationFrequency) {
     {
         let midiNote = Tone.Frequency(simulationFrequency).toMidi();
         if (midiNote >= 0 && midiNote < 128) {
+            if (string.midi.playing)
+            {
+                currentMidiOutput.send([0x80, midiNote, 0x40]) // NoteOff, Note, Velocity
+            }
             currentMidiOutput.send([0x90, midiNote, 0x40]) // NoteOn, Note, Velocity
-            registerMidiForRelease(midiNote);
+            // Metadata for releasing
+            string.midi.note = midiNote;
+            string.midi.time = accTimeMS/1000;
+            string.midi.playing = true;
         }
     }
 
@@ -562,16 +570,6 @@ function toggleTimeline() {
 }
 
 let currentMidiOutput = null;
-
-let playedMidiNote = new Uint16Array(256);
-let playedMidiNoteTime = new Float32Array(256);
-let midiNotesStart = 0;
-let midiNotesEnd = 0;
-function registerMidiForRelease(midiNote) {
-    playedMidiNote[midiNotesEnd] = midiNote;
-    playedMidiNoteTime[midiNotesEnd] = accTimeMS/1000;
-    midiNotesEnd = (midiNotesEnd + 1)%playedMidiNote.length;
-}
 async function requestMIDI() {
   const access = await navigator.requestMIDIAccess();
   const outputs = access.outputs.values();
@@ -861,6 +859,7 @@ function animate() {
     let deltaTime = currentTimeMS - timeMS;
     timeMS = currentTimeMS;
     accTimeMS += deltaTime;
+    let deviceTime = accTimeMS/1000;
     accTimeDays += deltaTime/1000 * config.daysPerSecond;
 
     if (uxfAnimTime >= 0) {
@@ -954,6 +953,15 @@ function animate() {
     }
     strings.forEach((s) => {
         s.update(audioReady, accTimeMS, deltaTime, deformPositionBasedOnPlanets, camera);
+
+        // midi release
+        if (s.midi.playing)
+        {
+            if (deviceTime - s.midi.time >= config.midiNotesTime) {
+                if (currentMidiOutput != null) currentMidiOutput.send([0x80, s.midi.note, 0x40]) // NoteOff
+                s.midi.playing = false;
+            }
+        }
     });
 
     if (pointerViz.visible && pointerFollow != null) {
@@ -993,20 +1001,5 @@ function animate() {
     timeDisplayDiv.textContent = timeDisplay.getDate() + " "+ monthNames[timeDisplay.getMonth()] + " "+ timeDisplay.getFullYear();//timeDisplay.toDateString();//.toLocaleDateString();
     
     if (timeline.isShowing) timeline.update(strings, accTimeMS/1000);
-
-    if (midiNotesStart != midiNotesEnd)
-    {
-        let t = accTimeMS / 1000;
-        let midiIsConnected = currentMidiOutput != null;
-        while (midiNotesStart != midiNotesEnd && t - playedMidiNoteTime[midiNotesStart] >= config.midiNotesTime)
-        {
-            if (midiIsConnected)
-            {
-                currentMidiOutput.send([0x80, playedMidiNote[midiNotesStart], 0x40]) // NoteOff, Note, Velocity
-                // currentMidiOutput.send([0x90, playedMidiNote[midiNotesStart], 0x00]) // NoteOn, Note, Velocity (0) // same as a NoteOff
-            }
-            midiNotesStart = (midiNotesStart + 1)%playedMidiNote.length;
-        }
-    }
 }
 renderer.setAnimationLoop( animate );
